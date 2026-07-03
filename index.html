@@ -147,6 +147,8 @@ tbody tr:hover{background:#FCFAF3;}
 .pm-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;}
 .pm-table tr:last-child td{border-bottom:none;}
 .bar-mini{height:6px;border-radius:3px;background:var(--accent);margin-top:4px;}
+.loading-state{padding:60px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+.error-state{padding:20px 24px;background:var(--red-soft);color:var(--red);border-radius:14px;font-size:13px;margin-bottom:20px;}
 </style>
 </head>
 <body>
@@ -158,9 +160,13 @@ tbody tr:hover{background:#FCFAF3;}
       <button data-tab="influencer">跨境網紅</button>
       <button data-tab="buyershow">買家秀</button>
     </div>
-    <div class="meta">最後更新 <span class="mono">2026-07-03</span></div>
+    <div class="meta">最後更新 <span class="mono" id="lastUpdated">讀取中...</span></div>
   </div>
 
+  <div class="loading-state" id="loadingState">正在讀取 Google Sheet 資料...</div>
+  <div id="errorState"></div>
+
+  <div id="mainContent" style="display:none">
   <!-- OVERVIEW -->
   <div class="tabpanel active" id="tab-overview">
     <div class="hero">
@@ -193,15 +199,43 @@ tbody tr:hover{background:#FCFAF3;}
 
   <!-- BUYER SHOW TAB -->
   <div class="tabpanel" id="tab-buyershow"></div>
+  </div>
 
 </div>
 
 <script>
+const APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-WSqn_fiXT8UBYZtF3G4Chyj2YAIdAXkv8fkvsHeZH8-QCVZLgctDLU6WkXt70lbckQ/exec';
+
 /* ================= Shared helpers ================= */
-function parseAmt(s){ if(!s || s==="—") return 0; const m=s.match(/[\d,]+/); return m?parseInt(m[0].replace(/,/g,''),10):0; }
-function fmt(n){ return 'NT$'+n.toLocaleString(); }
-function statusTag(s){ return `<span class="status-tag ${s}">${s}</span>`; }
-function profitCell(p){ return p>0 ? `<span class="profit pos">NT$${p.toLocaleString()}</span>` : `<span class="profit">—</span>`; }
+function norm(s){ return String(s==null?'':s).replace(/[\s()（）／/]/g,''); }
+function getVal(obj, candidates){
+  for (const c of candidates){ if(obj[c]!==undefined && obj[c]!==null && obj[c]!=='') return obj[c]; }
+  const keys = Object.keys(obj);
+  for (const c of candidates){
+    const nc = norm(c);
+    for (const k of keys){ if(norm(k)===nc && obj[k]!==undefined && obj[k]!==null && obj[k]!=='') return obj[k]; }
+  }
+  return '';
+}
+function numOrZero(v){
+  if(v===''||v===null||v===undefined) return 0;
+  const n = typeof v==='number' ? v : parseFloat(String(v).replace(/,/g,''));
+  return isNaN(n) ? 0 : n;
+}
+function parseDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return v;
+  const m = String(v).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
+}
+function fmtD(n){ return '$'+Math.round(n).toLocaleString(); }
+function statusTag(s){ const cls = s || '提案中'; return `<span class="status-tag ${cls}">${cls||'—'}</span>`; }
+function profitCell(p){ return p>0 ? `<span class="profit pos">$${Math.round(p).toLocaleString()}</span>` : `<span class="profit">—</span>`; }
+function moneyCell(amt, cur){
+  if(amt===''||amt===null||amt===undefined||amt==='') return '<span class="mono">—</span>';
+  return `<span class="mono">${amt}${cur?(' '+cur):''}</span>`;
+}
 
 function switchTab(name){
   document.querySelectorAll('.tabpanel').forEach(t=>t.classList.remove('active'));
@@ -209,6 +243,43 @@ function switchTab(name){
   document.querySelectorAll('#topnav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
 }
 document.querySelectorAll('#topnav button').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
+
+/* ================= Mapping raw sheet rows into working objects ================= */
+function mapProject(o){
+  return {
+    name: getVal(o,['廠商名稱']),
+    service: getVal(o,['服務','服務線']),
+    pm: getVal(o,['PM']),
+    bizOps: getVal(o,['業務/營運PM','業務營運PM']) || getVal(o,['業務']),
+    platform: getVal(o,['平台']) || '—',
+    count: getVal(o,['需求人數']) || '—',
+    due: getVal(o,['期望影片 完成時間','期望影片完成時間','預計合作時間']) || '—',
+    demand: getVal(o,['需求說明']) || '—',
+    coopTime: getVal(o,['填寫日期']) || '—',
+    stage: '提案中',
+  };
+}
+function mapItem(o){
+  return {
+    status: getVal(o,['狀態']) || '提案中',
+    proj: getVal(o,['廠商名稱']),
+    name: getVal(o,['網紅 / 產品名稱','網紅／產品名稱','網紅/產品名稱']),
+    service: getVal(o,['服務','服務線']),
+    pm: getVal(o,['PM']),
+    bizOps: getVal(o,['業務/營運PM']),
+    latest: getVal(o,['最新動態（自動帶入）','最新動態(自動帶入)','最新動態']) || '尚無更新',
+    recog: getVal(o,['業績認列時間']) || '',
+    partner: getVal(o,['配合服務商']) || '—',
+    note: getVal(o,['備註']) || '—',
+    costAmt: getVal(o,['成本金額']),
+    costCur: getVal(o,['成本幣別']),
+    quoteAmt: getVal(o,['對外報價金額']),
+    quoteCur: getVal(o,['對外報價幣別']),
+    quoteTWD: numOrZero(getVal(o,['對外報價(TWD)','對外報價TWD'])),
+    costTWD: numOrZero(getVal(o,['成本(TWD)','成本TWD'])),
+    profitTWD: numOrZero(getVal(o,['利潤(TWD)','利潤TWD'])),
+  };
+}
 
 /* ================= Generic service board factory ================= */
 function ServiceBoard(ns, cfg){
@@ -258,7 +329,7 @@ function ServiceBoard(ns, cfg){
       <span class="back-link" onclick="boards['${ns}'].showSub('main')">← 返回總覽</span>
       <div class="rev-grid">
         <div class="chart-box full">
-          <h3>各月執行業績 / 成本 / 利潤</h3>
+          <h3>各月業績認列 / 成本 / 利潤（依業績認列時間統計）</h3>
           <div class="chart-filter" id="${ns}-revFilter">
             <div class="mini-toggle on" data-k="全部">全部</div>
             <div class="mini-toggle" data-k="業績">業績</div>
@@ -281,7 +352,8 @@ function ServiceBoard(ns, cfg){
 
   const rows = cfg.rows;
   const projects = cfg.projects;
-  const pmList = [...new Set(projects.map(p=>p.pm))];
+  const logs = cfg.logs;
+  const pmList = [...new Set(projects.map(p=>p.pm).filter(Boolean))];
   let activePMs = new Set(pmList);
   let selectedProj = null;
   let activeStatus = '全部';
@@ -296,7 +368,8 @@ function ServiceBoard(ns, cfg){
     const tbody = document.getElementById(`${ns}-tbody`);
     tbody.innerHTML = rows.filter(r => (activeStatus==='全部' || r.status===activeStatus)
       && (!q || JSON.stringify(r).toLowerCase().includes(q)))
-      .map(r => `<tr>${cfg.columns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
+      .map(r => `<tr>${cfg.columns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('')
+      || `<tr><td colspan="${cfg.columns.length}" style="text-align:center;color:var(--ink-soft);padding:24px;">目前沒有符合的資料</td></tr>`;
   }
   document.querySelectorAll(`#${ns}-statusFilter .pill`).forEach(p=>{
     p.onclick = ()=>{
@@ -309,22 +382,36 @@ function ServiceBoard(ns, cfg){
   document.getElementById(`${ns}-searchInput`).addEventListener('input', renderTable);
 
   function kpiValue(type){
+    const now = new Date();
     switch(type){
-      case 'monthRev': return rows.filter(r=>r.recog && r.recog.startsWith('07')).reduce((s,r)=>s+parseAmt(r.outQuote),0);
-      case 'ongoingRev': return rows.filter(r=>r.status==='合作中').reduce((s,r)=>s+parseAmt(r.outQuote),0);
+      case 'monthRev': return rows.filter(r=>{ const d=parseDate(r.recog); return d && d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth(); }).reduce((s,r)=>s+r.quoteTWD,0);
+      case 'ongoingRev': return rows.filter(r=>r.status==='合作中').reduce((s,r)=>s+r.quoteTWD,0);
       case 'activeCount': return rows.filter(r=>r.status!=='已結案' && r.status!=='不合作').length;
       case 'projCount': return projects.length;
-      case 'newCount': return cfg.newCountData[cfg.newCountData.length-1];
+      case 'newCount': return computeNewCount();
     }
   }
   function isMoneyType(type){ return type==='monthRev' || type==='ongoingRev'; }
+  function computeNewCount(){
+    const now = new Date();
+    let count = 0;
+    rows.forEach(it=>{
+      const matches = logs.filter(l => norm(l.proj)===norm(it.proj) && norm(l.name)===norm(it.name));
+      if(matches.length===0) return;
+      const dates = matches.map(l=>l.date).filter(Boolean);
+      if(dates.length===0) return;
+      const minDate = new Date(Math.min(...dates.map(d=>d.getTime())));
+      if(minDate.getFullYear()===now.getFullYear() && minDate.getMonth()===now.getMonth()) count++;
+    });
+    return count;
+  }
   function renderKPIs(){
     const rowEl = document.getElementById(`${ns}-kpiRow`);
-    rowEl.innerHTML = cfg.kpiCards.map((k,i)=>{
+    rowEl.innerHTML = cfg.kpiCards.map((k)=>{
       const val = kpiValue(k.type);
-      const display = isMoneyType(k.type) ? (cfg.simpleCurrency ? '$'+val.toLocaleString() : fmt(val)) : val;
+      const display = isMoneyType(k.type) ? fmtD(val) : val;
       const clickAttr = k.clickable ? `onclick="boards['${ns}'].showSub('${k.clickable}')"` : '';
-      return `<div class="kpi ${cfg.kpiBoxed?'boxed':''} ${k.clickable?'clickable':''}" ${clickAttr}>
+      return `<div class="kpi boxed ${k.clickable?'clickable':''}" ${clickAttr}>
         <div class="num ${isMoneyType(k.type)?'mono':''}">${display}</div>
         <div class="label">${k.label}${k.clickable?' →':''}</div>
       </div>`;
@@ -332,7 +419,7 @@ function ServiceBoard(ns, cfg){
   }
 
   function projOngoingRev(name){
-    return rows.filter(r=>r.proj===name && r.status==='合作中').reduce((s,r)=>s+parseAmt(r.outQuote),0);
+    return rows.filter(r=>r.proj===name && r.status==='合作中').reduce((s,r)=>s+r.quoteTWD,0);
   }
 
   function renderPMDropdown(){
@@ -368,16 +455,18 @@ function ServiceBoard(ns, cfg){
   function renderProjCards(){
     const row = document.getElementById(`${ns}-projCardRow`);
     row.innerHTML = '';
-    projects.filter(p=>activePMs.has(p.pm)).forEach(p=>{
+    const filtered = projects.filter(p=>activePMs.has(p.pm));
+    if(filtered.length===0){ row.innerHTML = '<div style="color:var(--ink-soft);font-size:13px;padding:12px;">沒有符合篩選條件的專案</div>'; return; }
+    filtered.forEach(p=>{
       const rev = projOngoingRev(p.name);
       const card = document.createElement('div');
       card.className = `proj-card stripe-${p.stage}` + (selectedProj===p.name ? ' selected' : '');
       card.innerHTML = `
         <h4>${p.name}</h4>
-        <div class="prow"><span class="k">平台</span><span>${p.platform.split(' / ')[0]}</span></div>
+        <div class="prow"><span class="k">平台</span><span>${p.platform}</span></div>
         <div class="prow"><span class="k">需求人數</span><span>${p.count}</span></div>
         <div class="prow"><span class="k">預計合作時間</span><span class="mono">${p.due}</span></div>
-        <div class="prow rev"><span class="k">合作中業績</span><span class="v">${rev>0 ? fmt(rev) : '—'}</span></div>`;
+        <div class="prow rev"><span class="k">合作中業績</span><span class="v">${rev>0 ? fmtD(rev) : '—'}</span></div>`;
       card.onclick = ()=>{ selectedProj = p.name; renderProjCards(); openDetail(p); };
       row.appendChild(card);
     });
@@ -389,24 +478,56 @@ function ServiceBoard(ns, cfg){
     document.getElementById(`${ns}-infoGrid`).innerHTML = `
       <div class="info-field"><div class="k">需求平台</div><div class="v">${p.platform}</div></div>
       <div class="info-field"><div class="k">人數</div><div class="v">${p.count}</div></div>
-      <div class="info-field"><div class="k">執行PM</div><div class="v">${p.opsPM||p.pm}</div></div>
-      <div class="info-field"><div class="k">業務</div><div class="v">${p.business||p.pm}</div></div>
+      <div class="info-field"><div class="k">執行PM</div><div class="v">${p.pm||'—'}</div></div>
+      <div class="info-field"><div class="k">業務/營運PM</div><div class="v">${p.bizOps||'—'}</div></div>
       <div class="info-field"><div class="k">需求說明</div><div class="v">${p.demand}</div></div>
-      <div class="info-field"><div class="k">合作時間</div><div class="v">${p.coopTime}</div></div>
+      <div class="info-field"><div class="k">填寫日期</div><div class="v">${p.coopTime}</div></div>
     `;
-    document.getElementById(`${ns}-projDetailBody`).innerHTML = rows.filter(r=>r.proj===p.name)
-      .map(r => `<tr>${cfg.detailColumns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
+    const matched = rows.filter(r=>r.proj===p.name);
+    document.getElementById(`${ns}-projDetailBody`).innerHTML = matched.length
+      ? matched.map(r => `<tr>${cfg.detailColumns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('')
+      : `<tr><td colspan="${cfg.detailColumns.length}" style="text-align:center;color:var(--ink-soft);padding:20px;">此廠商目前沒有執行項目資料</td></tr>`;
   }
+
+  /* Real monthly revenue trend, derived from 業績認列時間 across the trailing 6 months */
+  function buildMonthBuckets(){
+    const now = new Date();
+    const buckets = [];
+    for(let i=5;i>=0;i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      buckets.push({ y:d.getFullYear(), m:d.getMonth(), label:`${d.getMonth()+1}月`, 業績:0, 成本:0, 利潤:0, newCount:0 });
+    }
+    rows.forEach(r=>{
+      const d = parseDate(r.recog);
+      if(!d) return;
+      const b = buckets.find(x=>x.y===d.getFullYear() && x.m===d.getMonth());
+      if(!b) return;
+      b.業績 += r.quoteTWD; b.成本 += r.costTWD; b.利潤 += r.profitTWD;
+    });
+    rows.forEach(it=>{
+      const matches = logs.filter(l => norm(l.proj)===norm(it.proj) && norm(l.name)===norm(it.name));
+      const dates = matches.map(l=>l.date).filter(Boolean);
+      if(dates.length===0) return;
+      const minDate = new Date(Math.min(...dates.map(d=>d.getTime())));
+      const b = buckets.find(x=>x.y===minDate.getFullYear() && x.m===minDate.getMonth());
+      if(b) b.newCount++;
+    });
+    return buckets;
+  }
+  const buckets = buildMonthBuckets();
+  const revLabels = buckets.map(b=>b.label);
+  const revData = { 業績: buckets.map(b=>b.業績), 成本: buckets.map(b=>b.成本), 利潤: buckets.map(b=>b.利潤) };
+  const newCountData = buckets.map(b=>b.newCount);
 
   let revChart;
   function buildRevChart(keys){
     const colors = {業績:'#17181C', 成本:'#F5C242', 利潤:'#2A5C99'};
     const datasets = keys.map(k => k==='利潤'
-      ? {type:'line', label:'利潤', data:cfg.revData.利潤, borderColor:colors.利潤, backgroundColor:colors.利潤, tension:.3}
-      : {type:'bar', label:k, data:cfg.revData[k], backgroundColor:colors[k], borderRadius:5, maxBarThickness:28});
+      ? {type:'line', label:'利潤', data:revData.利潤, borderColor:colors.利潤, backgroundColor:colors.利潤, tension:.3}
+      : {type:'bar', label:k, data:revData[k], backgroundColor:colors[k], borderRadius:5, maxBarThickness:28});
     if(revChart) revChart.destroy();
     revChart = new Chart(document.getElementById(`${ns}-revChart`), {
-      data:{ labels:cfg.revLabels, datasets },
+      data:{ labels:revLabels, datasets },
       options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
         scales:{ y:{grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
           x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
@@ -426,175 +547,159 @@ function ServiceBoard(ns, cfg){
 
   new Chart(document.getElementById(`${ns}-newInfChart`), {
     type:'bar',
-    data:{ labels:cfg.revLabels, datasets:[{data:cfg.newCountData, backgroundColor:'#F5C242', borderRadius:5, maxBarThickness:26}] },
+    data:{ labels:revLabels, datasets:[{data:newCountData, backgroundColor:'#F5C242', borderRadius:5, maxBarThickness:26}] },
     options:{ plugins:{legend:{display:false}}, scales:{
       y:{beginAtZero:true, grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
       x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
   });
-  const maxCount = Math.max(...cfg.pmStats.map(p=>p.count));
-  document.getElementById(`${ns}-pmTable`).innerHTML = '<tr><th>PM</th><th>執行項目數</th></tr>' +
-    cfg.pmStats.map(p=>`<tr><td>${p.pm}<div class="bar-mini" style="width:${(p.count/maxCount*100).toFixed(0)}%"></div></td><td class="mono">${p.count}</td></tr>`).join('');
+
+  const pmCounts = {};
+  rows.forEach(r=>{ if(r.pm) pmCounts[r.pm] = (pmCounts[r.pm]||0)+1; });
+  const pmStats = Object.entries(pmCounts).map(([pm,count])=>({pm,count})).sort((a,b)=>b.count-a.count);
+  const maxCount = Math.max(1, ...pmStats.map(p=>p.count));
+  document.getElementById(`${ns}-pmTable`).innerHTML = pmStats.length
+    ? '<tr><th>PM</th><th>執行項目數</th></tr>' + pmStats.map(p=>`<tr><td>${p.pm}<div class="bar-mini" style="width:${(p.count/maxCount*100).toFixed(0)}%"></div></td><td class="mono">${p.count}</td></tr>`).join('')
+    : '<tr><td style="padding:16px;color:var(--ink-soft);">尚無資料</td></tr>';
 
   renderKPIs(); renderTable(); renderPMDropdown(); updatePMBtnLabel(); renderProjCards();
 
   return { showSub, rows, projects,
-    monthRev: ()=> rows.filter(r=>r.recog && r.recog.startsWith('07')).reduce((s,r)=>s+parseAmt(r.outQuote),0),
-    videoCount: ()=> rows.filter(r=>r.status!=='已結案' && r.status!=='不合作').length };
+    monthRev: ()=> kpiValue('monthRev'),
+    videoCount: ()=> kpiValue('activeCount') };
 }
 
-/* ================= Cross-border influencer data ================= */
-const infRows = [
-  {status:"合作中", influencer:"Joulez", proj:"優智威", pm:"Melody", latest:"07/01 影片已發布，待請款", infQuote:"USD 500", outQuote:"NT$18,000", exec:"影片x1", recog:"07/15", profit:3000},
-  {status:"合作中", influencer:"Tristin", proj:"優智威", pm:"Melody", latest:"07/01 已回簽合約", infQuote:"USD 500", outQuote:"NT$18,000", exec:"影片x1", recog:"07/20", profit:3000},
-  {status:"提案中", influencer:"候選人A", proj:"優智威", pm:"Melody", latest:"06/28 從Fiverr名單挑選中", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-  {status:"提案中", influencer:"候選人B", proj:"輝葉", pm:"Esther", latest:"06/30 站一媒合，待出貨", infQuote:"RMB1800", outQuote:"NT$25,000", exec:"影片x3", recog:"07/25", profit:14200},
-  {status:"提案中", influencer:"候選人C", proj:"輝葉", pm:"Esther", latest:"06/10 討論年度排期預算", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-  {status:"停滯中", influencer:"候選人D", proj:"HiQ", pm:"Darren", latest:"04/13 寄信詢問兩間服務商，逾7天未更新", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-  {status:"不合作", influencer:"候選人E", proj:"HiQ", pm:"Darren", latest:"03/13 對方已明確拒絕", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-  {status:"提案中", influencer:"候選人F", proj:"NoriZite", pm:"Jason", latest:"07/01 已匹配網紅，產品待寄出", infQuote:"USD 300", outQuote:"NT$12,000", exec:"買家秀x1", recog:"07/18", profit:2500},
-  {status:"停滯中", influencer:"候選人G", proj:"桐源", pm:"Vernon", latest:"06/29 名單蒐集完成，逾7天待廠商選", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-  {status:"已結案", influencer:"候選人H", proj:"金格", pm:"Johnny", latest:"04/20 產品斷貨，暫停安排", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
-];
-const infProjects = [
-  {name:"優智威", pm:"Melody", opsPM:"Melody", business:"Johnny", platform:"Instagram / Amazon", count:3, due:"07/30", stage:"合作中",
-    demand:"開箱或Set up的UGC，強調電競周邊穩定性與RGB特色", coopTime:"2026/03 – 長期"},
-  {name:"輝葉", pm:"Esther", opsPM:"Esther", business:"Jason", platform:"TikTok", count:2, due:"07/31", stage:"提案中",
-    demand:"健走機TikTok網紅排期，配合父親節/Prime Day檔期", coopTime:"2026/05 – 2027/04"},
-  {name:"HiQ", pm:"Darren", opsPM:"Darren", business:"Darren", platform:"YouTube / IG", count:2, due:"待定", stage:"停滯中",
-    demand:"長影片科學機制解析＋短影片迷思破解，聚焦病友社群", coopTime:"未定"},
-  {name:"NoriZite", pm:"Jason", opsPM:"Jason", business:"Esther", platform:"Amazon 買家秀", count:3, due:"07/08", stage:"提案中",
-    demand:"英國模特，需有小孩/成人使用情境", coopTime:"2026/06 – 單次"},
-  {name:"桐源", pm:"Vernon", opsPM:"Vernon", business:"Vernon", platform:"IG / Amazon", count:1, due:"待合約", stage:"停滯中",
-    demand:"珠寶盒開箱，等待6月底營運合約簽訂後執行", coopTime:"待合約簽訂"},
-  {name:"金格", pm:"Johnny", opsPM:"Johnny", business:"Johnny", platform:"Amazon 買家秀", count:1, due:"—", stage:"已結案",
-    demand:"熔岩燈買家秀，因產品斷貨暫停", coopTime:"已結束"},
-];
+/* ================= Column configs ================= */
 const infColumns = [
   {label:'狀態', render:r=>statusTag(r.status)},
-  {label:'網紅 / 專案', render:r=>`<div class="name-cell"><div class="name">${r.influencer}</div><div class="proj">${r.proj}</div></div>`},
-  {label:'PM', render:r=>r.pm},
+  {label:'網紅 / 專案', render:r=>`<div class="name-cell"><div class="name">${r.name}</div><div class="proj">${r.proj}</div></div>`},
+  {label:'PM', render:r=>r.pm||'—'},
   {label:'最新動態', render:r=>r.latest},
-  {label:'網紅報價', render:r=>`<span class="mono">${r.infQuote}</span>`},
-  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
-  {label:'執行明細', render:r=>`<span class="detail-link">${r.exec}</span>`},
-  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
-  {label:'利潤', render:r=>profitCell(r.profit)},
+  {label:'網紅報價', render:r=>moneyCell(r.costAmt, r.costCur)},
+  {label:'對外報價', render:r=>moneyCell(r.quoteAmt, r.quoteCur)},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog||'—'}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profitTWD)},
 ];
 const infDetailColumns = [
   {label:'狀態', render:r=>statusTag(r.status)},
-  {label:'網紅', render:r=>`<div class="name-cell"><div class="name">${r.influencer}</div></div>`},
-  {label:'PM', render:r=>r.pm},
+  {label:'網紅', render:r=>`<div class="name-cell"><div class="name">${r.name}</div></div>`},
+  {label:'PM', render:r=>r.pm||'—'},
   {label:'最新動態', render:r=>r.latest},
-  {label:'網紅報價', render:r=>`<span class="mono">${r.infQuote}</span>`},
-  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
-  {label:'執行明細', render:r=>`<span class="detail-link">${r.exec}</span>`},
-  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
-  {label:'利潤', render:r=>profitCell(r.profit)},
-];
-
-/* ================= Buyer show data ================= */
-const bsRows = [
-  {status:"合作中", pm:"Jason", proj:"全鑫", product:"工業風桌椅", opsPM:"Jason", latest:"12/10已付款完成，問題排除即可拍攝", execCost:"—", outQuote:"NT$8,000", recog:"—", profit:0, partner:"—", note:"廠商問題待排除"},
-  {status:"提案中", pm:"Johnny", proj:"金格", product:"熔岩燈", opsPM:"Johnny", latest:"04/20 產品斷貨，暫停安排", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"讓站一選", note:"待廠商回覆"},
-  {status:"已結案", pm:"Johnny", proj:"金格", product:"電動咖啡豆研磨機", opsPM:"Johnny", latest:"05/15 影片完成已上傳", execCost:"RMB278", outQuote:"NT$9,500", recog:"05/20", profit:4200, partner:"讓站一選", note:"—"},
-  {status:"合作中", pm:"Johnny", proj:"宇通(TREGEN)", product:"拖車煞車系統", opsPM:"Johnny", latest:"05/25 全部九支影片拍攝完畢", execCost:"RMB1800+RMB834", outQuote:"USD 600", recog:"07/10", profit:9800, partner:"廠商自媒合", note:"同步發TikTok"},
-  {status:"提案中", pm:"Esther", proj:"輝葉", product:"健走機", opsPM:"Esther", latest:"07/01 影片approved，等待網紅發布", execCost:"RMB1800", outQuote:"—", recog:"—", profit:0, partner:"Joinbrands", note:"6月共三支影片"},
-  {status:"停滯中", pm:"Vernon", proj:"桐源", product:"珠寶盒", opsPM:"Vernon", latest:"06/29 名單蒐集完成，逾7天待廠商選", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"—", note:"待6月底營運合約簽訂"},
-  {status:"停滯中", pm:"—", proj:"NoriZite", product:"鼻噴劑(兒童)", opsPM:"—", latest:"06/10 請款單待送出，逾7天未更新", execCost:"—", outQuote:"NT$6,000", recog:"—", profit:0, partner:"站一找英國網紅", note:"英國模特，須有小孩使用情境"},
-  {status:"合作中", pm:"Esther", proj:"NoriZite", product:"卸妝液(Arwin雅聞)", opsPM:"Esther", latest:"06/17 影片完成發布", execCost:"—", outQuote:"NT$7,500", recog:"07/05", profit:3600, partner:"站一", note:"需搖勻，濃妝情境"},
-  {status:"提案中", pm:"Esther", proj:"NoriZite", product:"保濕安瓶(Arwin雅聞)", opsPM:"Esther", latest:"06/10 需求送出，待請款", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"—", note:"建議使用數天後分享效果"},
-];
-const bsProjects = [
-  {name:"全鑫", pm:"Jason", opsPM:"Jason", platform:"Amazon 買家秀", count:1, due:"待定", stage:"合作中",
-    demand:"工業風桌椅買家秀，等待廠商問題排除即可拍攝", coopTime:"待排程"},
-  {name:"金格", pm:"Johnny", opsPM:"Johnny", platform:"Amazon 買家秀", count:2, due:"—", stage:"已結案",
-    demand:"熔岩燈、電動咖啡豆研磨機買家秀，熔岩燈因斷貨暫停", coopTime:"部分已結束"},
-  {name:"宇通(TREGEN)", pm:"Johnny", opsPM:"Johnny", platform:"Amazon / TikTok", count:9, due:"已完成", stage:"合作中",
-    demand:"拖車煞車系統，9支影片同步發布Amazon與TikTok", coopTime:"2026/03 – 2026/07"},
-  {name:"輝葉", pm:"Esther", opsPM:"Esther", platform:"Amazon / TikTok", count:3, due:"07/31", stage:"提案中",
-    demand:"健走機買家秀，用Joinbrands媒合網紅", coopTime:"2026/05 – 2026/08"},
-  {name:"桐源", pm:"Vernon", opsPM:"Vernon", platform:"Amazon 買家秀", count:1, due:"待合約", stage:"停滯中",
-    demand:"珠寶盒買家秀，待6月底營運合約簽訂後執行", coopTime:"待合約簽訂"},
-  {name:"NoriZite", pm:"Esther", opsPM:"Esther", platform:"Amazon 買家秀（英國站）", count:3, due:"07/12", stage:"提案中",
-    demand:"鼻噴劑/卸妝液/保濕安瓶三款買家秀，需英國模特", coopTime:"2026/06 – 單次"},
+  {label:'網紅報價', render:r=>moneyCell(r.costAmt, r.costCur)},
+  {label:'對外報價', render:r=>moneyCell(r.quoteAmt, r.quoteCur)},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog||'—'}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profitTWD)},
 ];
 const bsColumns = [
   {label:'狀態', render:r=>statusTag(r.status)},
-  {label:'PM', render:r=>r.pm},
+  {label:'PM', render:r=>r.pm||'—'},
   {label:'廠商名稱', render:r=>`<div class="name-cell"><div class="name">${r.proj}</div></div>`},
-  {label:'產品', render:r=>r.product},
-  {label:'營運PM', render:r=>r.opsPM},
+  {label:'產品', render:r=>r.name},
+  {label:'業務/營運PM', render:r=>r.bizOps||'—'},
   {label:'最新動態', render:r=>r.latest},
-  {label:'執行成本', render:r=>`<span class="mono">${r.execCost}</span>`},
-  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
-  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
-  {label:'利潤', render:r=>profitCell(r.profit)},
+  {label:'執行成本', render:r=>moneyCell(r.costAmt, r.costCur)},
+  {label:'對外報價', render:r=>moneyCell(r.quoteAmt, r.quoteCur)},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog||'—'}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profitTWD)},
   {label:'配合服務商', render:r=>r.partner},
   {label:'備註', render:r=>`<span class="note-cell">${r.note}</span>`},
 ];
 const bsDetailColumns = [
   {label:'狀態', render:r=>statusTag(r.status)},
-  {label:'PM', render:r=>r.pm},
-  {label:'產品', render:r=>r.product},
-  {label:'營運PM', render:r=>r.opsPM},
+  {label:'PM', render:r=>r.pm||'—'},
+  {label:'產品', render:r=>r.name},
+  {label:'業務/營運PM', render:r=>r.bizOps||'—'},
   {label:'最新動態', render:r=>r.latest},
-  {label:'執行成本', render:r=>`<span class="mono">${r.execCost}</span>`},
-  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
-  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
-  {label:'利潤', render:r=>profitCell(r.profit)},
+  {label:'執行成本', render:r=>moneyCell(r.costAmt, r.costCur)},
+  {label:'對外報價', render:r=>moneyCell(r.quoteAmt, r.quoteCur)},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog||'—'}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profitTWD)},
   {label:'配合服務商', render:r=>r.partner},
   {label:'備註', render:r=>`<span class="note-cell">${r.note}</span>`},
 ];
 
-/* ================= Build boards ================= */
 const boards = {};
-boards['influencer'] = ServiceBoard('influencer', {
-  rows: infRows, projects: infProjects, columns: infColumns, detailColumns: infDetailColumns,
-  kpiBoxed: true, simpleCurrency: true,
-  kpiCards: [
-    {type:'monthRev', label:'本月業績', clickable:'rev'},
-    {type:'ongoingRev', label:'合作中業績'},
-    {type:'activeCount', label:'進行中'},
-    {type:'projCount', label:'專案數', clickable:'proj'},
-    {type:'newCount', label:'本月增加名單數'},
-  ],
-  revLabels: ['02月','03月','04月','05月','06月','07月'],
-  revData: { 業績:[210000,165000,198000,220000,175000,186000], 成本:[140000,110000,135000,150000,120000,128000], 利潤:[70000,55000,63000,70000,55000,58000] },
-  newCountLabel: '網紅新增數量（每月）', newCountData: [4,6,3,8,5,7],
-  pmStats: [{pm:"Melody",count:8},{pm:"Esther",count:6},{pm:"Darren",count:4},{pm:"Jason",count:5},{pm:"Vernon",count:3},{pm:"Johnny",count:3}],
-});
-boards['buyershow'] = ServiceBoard('buyershow', {
-  rows: bsRows, projects: bsProjects, columns: bsColumns, detailColumns: bsDetailColumns,
-  kpiBoxed: true, simpleCurrency: true,
-  kpiCards: [
-    {type:'monthRev', label:'本月業績', clickable:'rev'},
-    {type:'projCount', label:'進行中專案數', clickable:'proj'},
-    {type:'activeCount', label:'進行中影片數'},
-  ],
-  revLabels: ['02月','03月','04月','05月','06月','07月'],
-  revData: { 業績:[65000,58000,72000,80000,61000,55000], 成本:[38000,32000,44000,50000,36000,31000], 利潤:[27000,26000,28000,30000,25000,24000] },
-  newCountLabel: '拍攝新增數量（每月）', newCountData: [3,4,2,6,4,5],
-  pmStats: [{pm:"Jason",count:4},{pm:"Johnny",count:7},{pm:"Esther",count:6},{pm:"Vernon",count:2}],
-});
 
-/* ================= Overview aggregation ================= */
-function renderOverview(){
-  const infRev = boards.influencer.monthRev(), bsRev = boards.buyershow.monthRev();
+function renderOverview(infRows, infProjects, bsRows, bsProjects){
+  const now = new Date();
+  const monthRevOf = rows => rows.filter(r=>{ const d=parseDate(r.recog); return d && d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth(); }).reduce((s,r)=>s+r.quoteTWD,0);
+  const activeCountOf = rows => rows.filter(r=>r.status!=='已結案' && r.status!=='不合作').length;
+
+  const infRev = monthRevOf(infRows), bsRev = monthRevOf(bsRows);
   const totalProj = infProjects.length + bsProjects.length;
-  const totalVideo = boards.influencer.videoCount() + boards.buyershow.videoCount();
+  const totalVideo = activeCountOf(infRows) + activeCountOf(bsRows);
+
   document.getElementById('overviewBignums').innerHTML = `
-    <div class="bignum"><div class="num mono">$${(infRev+bsRev).toLocaleString()}</div><div class="label">本月業績合計</div></div>
+    <div class="bignum"><div class="num mono">${fmtD(infRev+bsRev)}</div><div class="label">本月業績合計</div></div>
     <div class="bignum"><div class="num">${totalProj}</div><div class="label">進行中專案數合計</div></div>
     <div class="bignum"><div class="num">${totalVideo}</div><div class="label">進行中影片數合計</div></div>
   `;
   document.getElementById('ovInfProj').textContent = infProjects.length;
-  document.getElementById('ovInfVideo').textContent = boards.influencer.videoCount();
-  document.getElementById('ovInfRev').textContent = fmt(infRev);
+  document.getElementById('ovInfVideo').textContent = activeCountOf(infRows);
+  document.getElementById('ovInfRev').textContent = fmtD(infRev);
   document.getElementById('ovBSProj').textContent = bsProjects.length;
-  document.getElementById('ovBSVideo').textContent = boards.buyershow.videoCount();
-  document.getElementById('ovBSRev').textContent = fmt(bsRev);
+  document.getElementById('ovBSVideo').textContent = activeCountOf(bsRows);
+  document.getElementById('ovBSRev').textContent = fmtD(bsRev);
 }
-renderOverview();
+
+/* ================= Load & boot ================= */
+async function boot(){
+  try{
+    const res = await fetch(APPSCRIPT_URL);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+
+    const rawProjects = data['專案需求'] || [];
+    const rawItems = data['執行項目表'] || [];
+    const rawLogs = data['進度日誌'] || [];
+
+    const allProjects = rawProjects.map(mapProject);
+    const allItems = rawItems.map(mapItem);
+    const allLogs = rawLogs.map(o=>({
+      proj: getVal(o,['廠商名稱']),
+      name: getVal(o,['網紅 / 產品名稱','網紅／產品名稱','網紅/產品名稱']),
+      date: parseDate(getVal(o,['日期'])),
+    }));
+
+    const infProjects = allProjects.filter(p=>norm(p.service)===norm('跨境網紅'));
+    const bsProjects = allProjects.filter(p=>norm(p.service)===norm('買家秀'));
+    const infRows = allItems.filter(r=>norm(r.service)===norm('跨境網紅'));
+    const bsRows = allItems.filter(r=>norm(r.service)===norm('買家秀'));
+
+    boards['influencer'] = ServiceBoard('influencer', {
+      rows: infRows, projects: infProjects, logs: allLogs,
+      columns: infColumns, detailColumns: infDetailColumns,
+      newCountLabel: '網紅新增數量（每月，依進度日誌首次出現月份估算）',
+      kpiCards: [
+        {type:'monthRev', label:'本月業績', clickable:'rev'},
+        {type:'ongoingRev', label:'合作中業績'},
+        {type:'activeCount', label:'進行中'},
+        {type:'projCount', label:'專案數', clickable:'proj'},
+        {type:'newCount', label:'本月增加名單數'},
+      ],
+    });
+    boards['buyershow'] = ServiceBoard('buyershow', {
+      rows: bsRows, projects: bsProjects, logs: allLogs,
+      columns: bsColumns, detailColumns: bsDetailColumns,
+      newCountLabel: '拍攝新增數量（每月，依進度日誌首次出現月份估算）',
+      kpiCards: [
+        {type:'monthRev', label:'本月業績', clickable:'rev'},
+        {type:'projCount', label:'進行中專案數', clickable:'proj'},
+        {type:'activeCount', label:'進行中影片數'},
+      ],
+    });
+
+    renderOverview(infRows, infProjects, bsRows, bsProjects);
+
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleString('zh-TW', {hour12:false});
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+  } catch(err){
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').innerHTML =
+      `<div class="error-state">讀取 Google Sheet 資料失敗：${err.message}。請確認 Apps Script 已部署為「所有人」可存取，或稍後重新整理頁面再試一次。</div>`;
+  }
+}
+boot();
 </script>
 </body>
 </html>
