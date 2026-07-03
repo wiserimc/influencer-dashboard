@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WiSer 網紅社群組 Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F7F3E7; --card:#FFFFFF; --ink:#17181C; --ink-soft:#726F63; --muted:#A8A395;
+  --accent:#F5C242; --accent-ink:#4A3703; --accent-soft:#FBEAC0;
+  --line:#ECE6D6; --red:#C0453C; --red-soft:#F7DEDB; --green:#2F7D5B; --green-soft:#DFEFE6;
+  --blue:#2A5C99; --blue-soft:#DCE7F3;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 24px 90px;}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap;}
+.topnav{background:var(--ink);border-radius:999px;padding:5px;display:flex;gap:2px;}
+.topnav button{border:none;background:transparent;color:#B9B6A9;font-family:'Inter';font-size:13px;font-weight:500;padding:9px 20px;border-radius:999px;cursor:pointer;}
+.topnav button.active{background:#FFFFFF;color:var(--ink);font-weight:600;}
+.meta{font-size:11.5px;color:var(--ink-soft);}
+
+/* Tabs */
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+
+/* Overview hero */
+.hero h1{font-family:'Fraunces',serif;font-size:28px;font-weight:600;margin:0 0 28px;}
+.bignum-row{display:flex;gap:24px;margin-bottom:36px;flex-wrap:wrap;}
+.bignum{
+  width:210px;box-sizing:border-box;padding:20px 24px;border-radius:20px;text-align:center;
+  background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1.5px solid rgba(255,255,255,.55);box-shadow:0 10px 24px rgba(23,24,28,.08);
+}
+.bignum .num{font-family:'Inter';font-weight:700;font-size:32px;line-height:1;white-space:nowrap;}
+.bignum .label{font-size:12px;color:var(--ink-soft);margin-top:8px;white-space:nowrap;}
+.service-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.service-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;cursor:pointer;transition:box-shadow .15s,transform .15s;}
+.service-card:hover{box-shadow:0 8px 24px rgba(23,24,28,.08);transform:translateY(-2px);}
+.service-card .tag{display:inline-block;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;margin-bottom:14px;}
+.service-card h3{font-family:'Fraunces',serif;font-size:19px;margin:0 0 14px;font-weight:600;}
+.service-card .srow{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line);}
+.service-card .srow:last-of-type{border-bottom:none;}
+.service-card .srow .k{color:var(--ink-soft);}
+.service-card .srow .v{font-family:'IBM Plex Mono';font-weight:500;}
+.service-card .cta{margin-top:14px;font-size:12px;color:var(--accent-ink);font-weight:600;}
+
+.section-label{font-size:11.5px;letter-spacing:.05em;color:var(--ink-soft);text-transform:uppercase;margin:0 0 12px;font-weight:600;}
+
+/* KPI cards */
+.kpi-row{display:flex;gap:24px;margin-bottom:28px;flex-wrap:wrap;}
+.kpi{width:210px;}
+.kpi{cursor:default;}
+.kpi.clickable{cursor:pointer;}
+.kpi .num{font-family:'Inter';font-weight:700;font-size:32px;line-height:1;white-space:nowrap;}
+.kpi .label{font-size:11.5px;color:var(--ink-soft);margin-top:7px;white-space:nowrap;}
+.kpi.clickable .label{color:var(--accent-ink);}
+.kpi.clickable:hover .num{opacity:.75;}
+.kpi.boxed{
+  box-sizing:border-box;padding:18px 22px;border-radius:20px;text-align:center;
+  background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1.5px solid rgba(255,255,255,.55);box-shadow:0 10px 24px rgba(23,24,28,.08);
+}
+
+/* Filter pills */
+.filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.pill{font-size:12.5px;padding:8px 17px;border-radius:999px;background:var(--ink);color:#fff;cursor:pointer;border:1px solid var(--ink);font-weight:500;}
+.pill.inactive{background:var(--card);color:var(--ink-soft);border-color:var(--line);}
+.spacer{flex:1;}
+.search-bar input{padding:9px 14px;border:1px solid var(--line);border-radius:999px;font-family:'Inter';font-size:13px;background:var(--card);width:210px;}
+
+/* Table */
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
+thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--ink-soft);padding:12px 14px;border-bottom:1px solid var(--line);background:#FBF9F2;font-weight:600;white-space:nowrap;}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#FCFAF3;}
+.status-tag{font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;white-space:nowrap;}
+.status-tag.合作中{background:var(--ink);color:#fff;}
+.status-tag.提案中{background:var(--blue-soft);color:var(--blue);}
+.status-tag.已結案{background:#EFEBDC;color:var(--ink-soft);}
+.status-tag.不合作{background:var(--red-soft);color:var(--red);}
+.status-tag.停滯中{background:var(--accent-soft);color:var(--accent-ink);}
+.name-cell .name{font-weight:600;}
+.name-cell .proj{font-size:11px;color:var(--ink-soft);}
+.profit.pos{color:var(--green);font-weight:600;}
+.detail-link{font-size:11.5px;color:var(--blue);text-decoration:underline;cursor:pointer;}
+.note-cell{color:var(--ink-soft);font-size:12px;}
+
+/* Sub-views */
+.subview{display:none;}
+.subview.active{display:block;}
+.back-link{font-size:12.5px;color:var(--ink-soft);cursor:pointer;margin-bottom:16px;display:inline-block;}
+.back-link:hover{color:var(--ink);}
+
+/* Project drilldown */
+.proj-toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;position:relative;}
+.pm-dropdown{position:relative;}
+.pm-dropdown-btn{font-size:12.5px;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:500;}
+.pm-dropdown-btn::after{content:'▾';font-size:10px;color:var(--ink-soft);}
+.pm-dropdown-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:160px;box-shadow:0 10px 28px rgba(23,24,28,.14);z-index:10;}
+.pm-dropdown-panel.open{display:block;}
+.pm-option{display:flex;align-items:center;gap:8px;padding:7px 8px;font-size:12.5px;border-radius:8px;cursor:pointer;}
+.pm-option:hover{background:#FBF9F2;}
+.pm-option input{margin:0;}
+.pm-dropdown-foot{display:flex;gap:8px;padding:7px 8px 2px;border-top:1px solid var(--line);margin-top:4px;}
+.pm-dropdown-foot span{font-size:11px;color:var(--blue);cursor:pointer;}
+
+.proj-card-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;margin-bottom:24px;}
+.proj-card{flex:0 0 195px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--muted);border-radius:16px;padding:16px 18px;cursor:pointer;transition:box-shadow .15s;}
+.proj-card:hover{box-shadow:0 6px 18px rgba(23,24,28,.08);}
+.proj-card.selected{box-shadow:0 0 0 1.5px var(--ink);}
+.proj-card h4{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 9px;font-weight:600;}
+.proj-card .prow{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;}
+.proj-card .prow .k{color:var(--ink-soft);}
+.proj-card .prow.rev{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);}
+.proj-card .prow.rev .v{font-family:'IBM Plex Mono';font-weight:600;color:var(--green);}
+.stripe-合作中{border-left-color:var(--ink);}
+.stripe-提案中{border-left-color:var(--blue);}
+.stripe-停滯中{border-left-color:var(--accent);}
+.stripe-已結案{border-left-color:var(--muted);}
+
+.detail-panel{display:none;border-top:2px solid var(--ink);padding-top:22px;margin-top:4px;}
+.detail-panel.open{display:block;}
+.detail-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin:0 0 16px;}
+.info-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:26px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.info-field .k{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+.info-field .v{font-size:13.5px;margin-top:3px;}
+
+/* Revenue drilldown */
+.rev-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;}
+.chart-box h3{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 12px;font-weight:600;}
+.chart-box.full{grid-column:1 / -1;}
+.chart-filter{display:flex;gap:6px;margin-bottom:14px;}
+.mini-toggle{font-size:11px;padding:5px 13px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink-soft);cursor:pointer;font-weight:500;}
+.mini-toggle.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+.pm-table{width:100%;border-collapse:collapse;}
+.pm-table th{text-align:left;font-size:11px;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600;}
+.pm-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;}
+.pm-table tr:last-child td{border-bottom:none;}
+.bar-mini{height:6px;border-radius:3px;background:var(--accent);margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="topnav" id="topnav">
+      <button class="active" data-tab="overview">總覽</button>
+      <button data-tab="influencer">跨境網紅</button>
+      <button data-tab="buyershow">買家秀</button>
+    </div>
+    <div class="meta">最後更新 <span class="mono">2026-07-03</span></div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tabpanel active" id="tab-overview">
+    <div class="hero">
+      <h1>Welcome back，網紅社群組</h1>
+      <div class="bignum-row" id="overviewBignums"></div>
+    </div>
+    <div class="section-label">服務線</div>
+    <div class="service-grid">
+      <div class="service-card" onclick="switchTab('influencer')">
+        <div class="tag">跨境網紅</div>
+        <h3>Cross-border Influencer</h3>
+        <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovInfProj"></span></div>
+        <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovInfVideo"></span></div>
+        <div class="srow"><span class="k">本月業績</span><span class="v" id="ovInfRev"></span></div>
+        <div class="cta">查看細節 →</div>
+      </div>
+      <div class="service-card" onclick="switchTab('buyershow')">
+        <div class="tag">買家秀</div>
+        <h3>Buyer Show</h3>
+        <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovBSProj"></span></div>
+        <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovBSVideo"></span></div>
+        <div class="srow"><span class="k">本月業績</span><span class="v" id="ovBSRev"></span></div>
+        <div class="cta">查看細節 →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFLUENCER TAB -->
+  <div class="tabpanel" id="tab-influencer"></div>
+
+  <!-- BUYER SHOW TAB -->
+  <div class="tabpanel" id="tab-buyershow"></div>
+
+</div>
+
+<script>
+/* ================= Shared helpers ================= */
+function parseAmt(s){ if(!s || s==="—") return 0; const m=s.match(/[\d,]+/); return m?parseInt(m[0].replace(/,/g,''),10):0; }
+function fmt(n){ return 'NT$'+n.toLocaleString(); }
+function statusTag(s){ return `<span class="status-tag ${s}">${s}</span>`; }
+function profitCell(p){ return p>0 ? `<span class="profit pos">NT$${p.toLocaleString()}</span>` : `<span class="profit">—</span>`; }
+
+function switchTab(name){
+  document.querySelectorAll('.tabpanel').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('#topnav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+}
+document.querySelectorAll('#topnav button').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
+
+/* ================= Generic service board factory ================= */
+function ServiceBoard(ns, cfg){
+  const container = document.getElementById('tab-'+ns);
+  container.innerHTML = `
+    <div class="subview active" id="${ns}-view-main">
+      <div class="kpi-row" id="${ns}-kpiRow"></div>
+
+      <div class="section-label">狀態篩選</div>
+      <div class="filter-row" id="${ns}-statusFilter">
+        <div class="pill inactive" data-s="合作中">合作中</div>
+        <div class="pill inactive" data-s="提案中">提案中</div>
+        <div class="pill inactive" data-s="停滯中">停滯中</div>
+        <div class="pill inactive" data-s="已結案">已結案</div>
+        <div class="pill inactive" data-s="不合作">不合作</div>
+        <div class="pill" data-s="全部">全部</div>
+        <div class="spacer"></div>
+        <div class="search-bar"><input type="text" id="${ns}-searchInput" placeholder="搜尋..."></div>
+      </div>
+
+      <div class="section-label">清單明細</div>
+      <table><thead><tr>${cfg.columns.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+      <tbody id="${ns}-tbody"></tbody></table>
+    </div>
+
+    <div class="subview" id="${ns}-view-proj">
+      <span class="back-link" onclick="boards['${ns}'].showSub('main')">← 返回總覽</span>
+      <div class="proj-toprow">
+        <div class="section-label" style="margin:0">全部專案（點卡片看細節）</div>
+        <div class="pm-dropdown">
+          <div class="pm-dropdown-btn" id="${ns}-pmDropdownBtn">PM 篩選：全部</div>
+          <div class="pm-dropdown-panel" id="${ns}-pmDropdownPanel"></div>
+        </div>
+      </div>
+      <div class="proj-card-row" id="${ns}-projCardRow"></div>
+      <div class="detail-panel" id="${ns}-detailPanel">
+        <div class="detail-title" id="${ns}-detailTitle"></div>
+        <div class="section-label">基本資訊</div>
+        <div class="info-box"><div class="info-grid" id="${ns}-infoGrid"></div></div>
+        <div class="section-label">明細（此廠商的清單）</div>
+        <table><thead><tr>${cfg.detailColumns.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+        <tbody id="${ns}-projDetailBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="subview" id="${ns}-view-rev">
+      <span class="back-link" onclick="boards['${ns}'].showSub('main')">← 返回總覽</span>
+      <div class="rev-grid">
+        <div class="chart-box full">
+          <h3>各月執行業績 / 成本 / 利潤</h3>
+          <div class="chart-filter" id="${ns}-revFilter">
+            <div class="mini-toggle on" data-k="全部">全部</div>
+            <div class="mini-toggle" data-k="業績">業績</div>
+            <div class="mini-toggle" data-k="成本">成本</div>
+            <div class="mini-toggle" data-k="利潤">利潤</div>
+          </div>
+          <canvas id="${ns}-revChart" height="80"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>${cfg.newCountLabel}</h3>
+          <canvas id="${ns}-newInfChart" height="140"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>各 PM 執行數量</h3>
+          <table class="pm-table" id="${ns}-pmTable"></table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const rows = cfg.rows;
+  const projects = cfg.projects;
+  const pmList = [...new Set(projects.map(p=>p.pm))];
+  let activePMs = new Set(pmList);
+  let selectedProj = null;
+  let activeStatus = '全部';
+
+  function showSub(name){
+    ['main','proj','rev'].forEach(v=>document.getElementById(`${ns}-view-${v}`).classList.remove('active'));
+    document.getElementById(`${ns}-view-${name}`).classList.add('active');
+  }
+
+  function renderTable(){
+    const q = document.getElementById(`${ns}-searchInput`).value.toLowerCase();
+    const tbody = document.getElementById(`${ns}-tbody`);
+    tbody.innerHTML = rows.filter(r => (activeStatus==='全部' || r.status===activeStatus)
+      && (!q || JSON.stringify(r).toLowerCase().includes(q)))
+      .map(r => `<tr>${cfg.columns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
+  }
+  document.querySelectorAll(`#${ns}-statusFilter .pill`).forEach(p=>{
+    p.onclick = ()=>{
+      document.querySelectorAll(`#${ns}-statusFilter .pill`).forEach(x=>x.classList.add('inactive'));
+      p.classList.remove('inactive');
+      activeStatus = p.dataset.s;
+      renderTable();
+    };
+  });
+  document.getElementById(`${ns}-searchInput`).addEventListener('input', renderTable);
+
+  function kpiValue(type){
+    switch(type){
+      case 'monthRev': return rows.filter(r=>r.recog && r.recog.startsWith('07')).reduce((s,r)=>s+parseAmt(r.outQuote),0);
+      case 'ongoingRev': return rows.filter(r=>r.status==='合作中').reduce((s,r)=>s+parseAmt(r.outQuote),0);
+      case 'activeCount': return rows.filter(r=>r.status!=='已結案' && r.status!=='不合作').length;
+      case 'projCount': return projects.length;
+      case 'newCount': return cfg.newCountData[cfg.newCountData.length-1];
+    }
+  }
+  function isMoneyType(type){ return type==='monthRev' || type==='ongoingRev'; }
+  function renderKPIs(){
+    const rowEl = document.getElementById(`${ns}-kpiRow`);
+    rowEl.innerHTML = cfg.kpiCards.map((k,i)=>{
+      const val = kpiValue(k.type);
+      const display = isMoneyType(k.type) ? (cfg.simpleCurrency ? '$'+val.toLocaleString() : fmt(val)) : val;
+      const clickAttr = k.clickable ? `onclick="boards['${ns}'].showSub('${k.clickable}')"` : '';
+      return `<div class="kpi ${cfg.kpiBoxed?'boxed':''} ${k.clickable?'clickable':''}" ${clickAttr}>
+        <div class="num ${isMoneyType(k.type)?'mono':''}">${display}</div>
+        <div class="label">${k.label}${k.clickable?' →':''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function projOngoingRev(name){
+    return rows.filter(r=>r.proj===name && r.status==='合作中').reduce((s,r)=>s+parseAmt(r.outQuote),0);
+  }
+
+  function renderPMDropdown(){
+    const panel = document.getElementById(`${ns}-pmDropdownPanel`);
+    panel.innerHTML = pmList.map(pm=>`<label class="pm-option"><input type="checkbox" data-pm="${pm}" checked> ${pm}</label>`).join('')
+      + `<div class="pm-dropdown-foot"><span data-act="all">全選</span><span data-act="none">清空</span></div>`;
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.onchange = ()=>{
+        if(cb.checked) activePMs.add(cb.dataset.pm); else activePMs.delete(cb.dataset.pm);
+        updatePMBtnLabel(); renderProjCards();
+      };
+    });
+    panel.querySelector('[data-act=all]').onclick = ()=>{
+      activePMs = new Set(pmList);
+      panel.querySelectorAll('input').forEach(cb=>cb.checked=true);
+      updatePMBtnLabel(); renderProjCards();
+    };
+    panel.querySelector('[data-act=none]').onclick = ()=>{
+      activePMs = new Set();
+      panel.querySelectorAll('input').forEach(cb=>cb.checked=false);
+      updatePMBtnLabel(); renderProjCards();
+    };
+  }
+  function updatePMBtnLabel(){
+    const btn = document.getElementById(`${ns}-pmDropdownBtn`);
+    const label = activePMs.size===pmList.length ? '全部' : activePMs.size===0 ? '未選擇' : `已選 ${activePMs.size} 位`;
+    btn.textContent = `PM 篩選：${label}`;
+  }
+  document.getElementById(`${ns}-pmDropdownBtn`).onclick = (e)=>{ e.stopPropagation(); document.getElementById(`${ns}-pmDropdownPanel`).classList.toggle('open'); };
+  document.addEventListener('click', ()=> document.getElementById(`${ns}-pmDropdownPanel`).classList.remove('open'));
+  document.getElementById(`${ns}-pmDropdownPanel`).addEventListener('click', e=> e.stopPropagation());
+
+  function renderProjCards(){
+    const row = document.getElementById(`${ns}-projCardRow`);
+    row.innerHTML = '';
+    projects.filter(p=>activePMs.has(p.pm)).forEach(p=>{
+      const rev = projOngoingRev(p.name);
+      const card = document.createElement('div');
+      card.className = `proj-card stripe-${p.stage}` + (selectedProj===p.name ? ' selected' : '');
+      card.innerHTML = `
+        <h4>${p.name}</h4>
+        <div class="prow"><span class="k">平台</span><span>${p.platform.split(' / ')[0]}</span></div>
+        <div class="prow"><span class="k">需求人數</span><span>${p.count}</span></div>
+        <div class="prow"><span class="k">預計合作時間</span><span class="mono">${p.due}</span></div>
+        <div class="prow rev"><span class="k">合作中業績</span><span class="v">${rev>0 ? fmt(rev) : '—'}</span></div>`;
+      card.onclick = ()=>{ selectedProj = p.name; renderProjCards(); openDetail(p); };
+      row.appendChild(card);
+    });
+  }
+
+  function openDetail(p){
+    document.getElementById(`${ns}-detailPanel`).classList.add('open');
+    document.getElementById(`${ns}-detailTitle`).textContent = p.name;
+    document.getElementById(`${ns}-infoGrid`).innerHTML = `
+      <div class="info-field"><div class="k">需求平台</div><div class="v">${p.platform}</div></div>
+      <div class="info-field"><div class="k">人數</div><div class="v">${p.count}</div></div>
+      <div class="info-field"><div class="k">執行PM</div><div class="v">${p.opsPM||p.pm}</div></div>
+      <div class="info-field"><div class="k">業務</div><div class="v">${p.business||p.pm}</div></div>
+      <div class="info-field"><div class="k">需求說明</div><div class="v">${p.demand}</div></div>
+      <div class="info-field"><div class="k">合作時間</div><div class="v">${p.coopTime}</div></div>
+    `;
+    document.getElementById(`${ns}-projDetailBody`).innerHTML = rows.filter(r=>r.proj===p.name)
+      .map(r => `<tr>${cfg.detailColumns.map(c=>`<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
+  }
+
+  let revChart;
+  function buildRevChart(keys){
+    const colors = {業績:'#17181C', 成本:'#F5C242', 利潤:'#2A5C99'};
+    const datasets = keys.map(k => k==='利潤'
+      ? {type:'line', label:'利潤', data:cfg.revData.利潤, borderColor:colors.利潤, backgroundColor:colors.利潤, tension:.3}
+      : {type:'bar', label:k, data:cfg.revData[k], backgroundColor:colors[k], borderRadius:5, maxBarThickness:28});
+    if(revChart) revChart.destroy();
+    revChart = new Chart(document.getElementById(`${ns}-revChart`), {
+      data:{ labels:cfg.revLabels, datasets },
+      options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
+        scales:{ y:{grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
+          x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
+    });
+  }
+  buildRevChart(['業績','成本','利潤']);
+  let revActive = new Set(['全部']);
+  document.querySelectorAll(`#${ns}-revFilter .mini-toggle`).forEach(btn=>{
+    btn.onclick = ()=>{
+      const k = btn.dataset.k;
+      if(k==='全部'){ revActive = new Set(['全部']); }
+      else { revActive.delete('全部'); if(revActive.has(k)) revActive.delete(k); else revActive.add(k); if(revActive.size===0) revActive.add('全部'); }
+      document.querySelectorAll(`#${ns}-revFilter .mini-toggle`).forEach(b=> b.classList.toggle('on', revActive.has(b.dataset.k)));
+      buildRevChart(revActive.has('全部') ? ['業績','成本','利潤'] : [...revActive]);
+    };
+  });
+
+  new Chart(document.getElementById(`${ns}-newInfChart`), {
+    type:'bar',
+    data:{ labels:cfg.revLabels, datasets:[{data:cfg.newCountData, backgroundColor:'#F5C242', borderRadius:5, maxBarThickness:26}] },
+    options:{ plugins:{legend:{display:false}}, scales:{
+      y:{beginAtZero:true, grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
+      x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
+  });
+  const maxCount = Math.max(...cfg.pmStats.map(p=>p.count));
+  document.getElementById(`${ns}-pmTable`).innerHTML = '<tr><th>PM</th><th>執行項目數</th></tr>' +
+    cfg.pmStats.map(p=>`<tr><td>${p.pm}<div class="bar-mini" style="width:${(p.count/maxCount*100).toFixed(0)}%"></div></td><td class="mono">${p.count}</td></tr>`).join('');
+
+  renderKPIs(); renderTable(); renderPMDropdown(); updatePMBtnLabel(); renderProjCards();
+
+  return { showSub, rows, projects,
+    monthRev: ()=> rows.filter(r=>r.recog && r.recog.startsWith('07')).reduce((s,r)=>s+parseAmt(r.outQuote),0),
+    videoCount: ()=> rows.filter(r=>r.status!=='已結案' && r.status!=='不合作').length };
+}
+
+/* ================= Cross-border influencer data ================= */
+const infRows = [
+  {status:"合作中", influencer:"Joulez", proj:"優智威", pm:"Melody", latest:"07/01 影片已發布，待請款", infQuote:"USD 500", outQuote:"NT$18,000", exec:"影片x1", recog:"07/15", profit:3000},
+  {status:"合作中", influencer:"Tristin", proj:"優智威", pm:"Melody", latest:"07/01 已回簽合約", infQuote:"USD 500", outQuote:"NT$18,000", exec:"影片x1", recog:"07/20", profit:3000},
+  {status:"提案中", influencer:"候選人A", proj:"優智威", pm:"Melody", latest:"06/28 從Fiverr名單挑選中", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+  {status:"提案中", influencer:"候選人B", proj:"輝葉", pm:"Esther", latest:"06/30 站一媒合，待出貨", infQuote:"RMB1800", outQuote:"NT$25,000", exec:"影片x3", recog:"07/25", profit:14200},
+  {status:"提案中", influencer:"候選人C", proj:"輝葉", pm:"Esther", latest:"06/10 討論年度排期預算", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+  {status:"停滯中", influencer:"候選人D", proj:"HiQ", pm:"Darren", latest:"04/13 寄信詢問兩間服務商，逾7天未更新", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+  {status:"不合作", influencer:"候選人E", proj:"HiQ", pm:"Darren", latest:"03/13 對方已明確拒絕", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+  {status:"提案中", influencer:"候選人F", proj:"NoriZite", pm:"Jason", latest:"07/01 已匹配網紅，產品待寄出", infQuote:"USD 300", outQuote:"NT$12,000", exec:"買家秀x1", recog:"07/18", profit:2500},
+  {status:"停滯中", influencer:"候選人G", proj:"桐源", pm:"Vernon", latest:"06/29 名單蒐集完成，逾7天待廠商選", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+  {status:"已結案", influencer:"候選人H", proj:"金格", pm:"Johnny", latest:"04/20 產品斷貨，暫停安排", infQuote:"—", outQuote:"—", exec:"—", recog:"—", profit:0},
+];
+const infProjects = [
+  {name:"優智威", pm:"Melody", opsPM:"Melody", business:"Johnny", platform:"Instagram / Amazon", count:3, due:"07/30", stage:"合作中",
+    demand:"開箱或Set up的UGC，強調電競周邊穩定性與RGB特色", coopTime:"2026/03 – 長期"},
+  {name:"輝葉", pm:"Esther", opsPM:"Esther", business:"Jason", platform:"TikTok", count:2, due:"07/31", stage:"提案中",
+    demand:"健走機TikTok網紅排期，配合父親節/Prime Day檔期", coopTime:"2026/05 – 2027/04"},
+  {name:"HiQ", pm:"Darren", opsPM:"Darren", business:"Darren", platform:"YouTube / IG", count:2, due:"待定", stage:"停滯中",
+    demand:"長影片科學機制解析＋短影片迷思破解，聚焦病友社群", coopTime:"未定"},
+  {name:"NoriZite", pm:"Jason", opsPM:"Jason", business:"Esther", platform:"Amazon 買家秀", count:3, due:"07/08", stage:"提案中",
+    demand:"英國模特，需有小孩/成人使用情境", coopTime:"2026/06 – 單次"},
+  {name:"桐源", pm:"Vernon", opsPM:"Vernon", business:"Vernon", platform:"IG / Amazon", count:1, due:"待合約", stage:"停滯中",
+    demand:"珠寶盒開箱，等待6月底營運合約簽訂後執行", coopTime:"待合約簽訂"},
+  {name:"金格", pm:"Johnny", opsPM:"Johnny", business:"Johnny", platform:"Amazon 買家秀", count:1, due:"—", stage:"已結案",
+    demand:"熔岩燈買家秀，因產品斷貨暫停", coopTime:"已結束"},
+];
+const infColumns = [
+  {label:'狀態', render:r=>statusTag(r.status)},
+  {label:'網紅 / 專案', render:r=>`<div class="name-cell"><div class="name">${r.influencer}</div><div class="proj">${r.proj}</div></div>`},
+  {label:'PM', render:r=>r.pm},
+  {label:'最新動態', render:r=>r.latest},
+  {label:'網紅報價', render:r=>`<span class="mono">${r.infQuote}</span>`},
+  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
+  {label:'執行明細', render:r=>`<span class="detail-link">${r.exec}</span>`},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profit)},
+];
+const infDetailColumns = [
+  {label:'狀態', render:r=>statusTag(r.status)},
+  {label:'網紅', render:r=>`<div class="name-cell"><div class="name">${r.influencer}</div></div>`},
+  {label:'PM', render:r=>r.pm},
+  {label:'最新動態', render:r=>r.latest},
+  {label:'網紅報價', render:r=>`<span class="mono">${r.infQuote}</span>`},
+  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
+  {label:'執行明細', render:r=>`<span class="detail-link">${r.exec}</span>`},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profit)},
+];
+
+/* ================= Buyer show data ================= */
+const bsRows = [
+  {status:"合作中", pm:"Jason", proj:"全鑫", product:"工業風桌椅", opsPM:"Jason", latest:"12/10已付款完成，問題排除即可拍攝", execCost:"—", outQuote:"NT$8,000", recog:"—", profit:0, partner:"—", note:"廠商問題待排除"},
+  {status:"提案中", pm:"Johnny", proj:"金格", product:"熔岩燈", opsPM:"Johnny", latest:"04/20 產品斷貨，暫停安排", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"讓站一選", note:"待廠商回覆"},
+  {status:"已結案", pm:"Johnny", proj:"金格", product:"電動咖啡豆研磨機", opsPM:"Johnny", latest:"05/15 影片完成已上傳", execCost:"RMB278", outQuote:"NT$9,500", recog:"05/20", profit:4200, partner:"讓站一選", note:"—"},
+  {status:"合作中", pm:"Johnny", proj:"宇通(TREGEN)", product:"拖車煞車系統", opsPM:"Johnny", latest:"05/25 全部九支影片拍攝完畢", execCost:"RMB1800+RMB834", outQuote:"USD 600", recog:"07/10", profit:9800, partner:"廠商自媒合", note:"同步發TikTok"},
+  {status:"提案中", pm:"Esther", proj:"輝葉", product:"健走機", opsPM:"Esther", latest:"07/01 影片approved，等待網紅發布", execCost:"RMB1800", outQuote:"—", recog:"—", profit:0, partner:"Joinbrands", note:"6月共三支影片"},
+  {status:"停滯中", pm:"Vernon", proj:"桐源", product:"珠寶盒", opsPM:"Vernon", latest:"06/29 名單蒐集完成，逾7天待廠商選", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"—", note:"待6月底營運合約簽訂"},
+  {status:"停滯中", pm:"—", proj:"NoriZite", product:"鼻噴劑(兒童)", opsPM:"—", latest:"06/10 請款單待送出，逾7天未更新", execCost:"—", outQuote:"NT$6,000", recog:"—", profit:0, partner:"站一找英國網紅", note:"英國模特，須有小孩使用情境"},
+  {status:"合作中", pm:"Esther", proj:"NoriZite", product:"卸妝液(Arwin雅聞)", opsPM:"Esther", latest:"06/17 影片完成發布", execCost:"—", outQuote:"NT$7,500", recog:"07/05", profit:3600, partner:"站一", note:"需搖勻，濃妝情境"},
+  {status:"提案中", pm:"Esther", proj:"NoriZite", product:"保濕安瓶(Arwin雅聞)", opsPM:"Esther", latest:"06/10 需求送出，待請款", execCost:"—", outQuote:"—", recog:"—", profit:0, partner:"—", note:"建議使用數天後分享效果"},
+];
+const bsProjects = [
+  {name:"全鑫", pm:"Jason", opsPM:"Jason", platform:"Amazon 買家秀", count:1, due:"待定", stage:"合作中",
+    demand:"工業風桌椅買家秀，等待廠商問題排除即可拍攝", coopTime:"待排程"},
+  {name:"金格", pm:"Johnny", opsPM:"Johnny", platform:"Amazon 買家秀", count:2, due:"—", stage:"已結案",
+    demand:"熔岩燈、電動咖啡豆研磨機買家秀，熔岩燈因斷貨暫停", coopTime:"部分已結束"},
+  {name:"宇通(TREGEN)", pm:"Johnny", opsPM:"Johnny", platform:"Amazon / TikTok", count:9, due:"已完成", stage:"合作中",
+    demand:"拖車煞車系統，9支影片同步發布Amazon與TikTok", coopTime:"2026/03 – 2026/07"},
+  {name:"輝葉", pm:"Esther", opsPM:"Esther", platform:"Amazon / TikTok", count:3, due:"07/31", stage:"提案中",
+    demand:"健走機買家秀，用Joinbrands媒合網紅", coopTime:"2026/05 – 2026/08"},
+  {name:"桐源", pm:"Vernon", opsPM:"Vernon", platform:"Amazon 買家秀", count:1, due:"待合約", stage:"停滯中",
+    demand:"珠寶盒買家秀，待6月底營運合約簽訂後執行", coopTime:"待合約簽訂"},
+  {name:"NoriZite", pm:"Esther", opsPM:"Esther", platform:"Amazon 買家秀（英國站）", count:3, due:"07/12", stage:"提案中",
+    demand:"鼻噴劑/卸妝液/保濕安瓶三款買家秀，需英國模特", coopTime:"2026/06 – 單次"},
+];
+const bsColumns = [
+  {label:'狀態', render:r=>statusTag(r.status)},
+  {label:'PM', render:r=>r.pm},
+  {label:'廠商名稱', render:r=>`<div class="name-cell"><div class="name">${r.proj}</div></div>`},
+  {label:'產品', render:r=>r.product},
+  {label:'營運PM', render:r=>r.opsPM},
+  {label:'最新動態', render:r=>r.latest},
+  {label:'執行成本', render:r=>`<span class="mono">${r.execCost}</span>`},
+  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profit)},
+  {label:'配合服務商', render:r=>r.partner},
+  {label:'備註', render:r=>`<span class="note-cell">${r.note}</span>`},
+];
+const bsDetailColumns = [
+  {label:'狀態', render:r=>statusTag(r.status)},
+  {label:'PM', render:r=>r.pm},
+  {label:'產品', render:r=>r.product},
+  {label:'營運PM', render:r=>r.opsPM},
+  {label:'最新動態', render:r=>r.latest},
+  {label:'執行成本', render:r=>`<span class="mono">${r.execCost}</span>`},
+  {label:'對外報價', render:r=>`<span class="mono">${r.outQuote}</span>`},
+  {label:'業績認列時間', render:r=>`<span class="mono">${r.recog}</span>`},
+  {label:'利潤', render:r=>profitCell(r.profit)},
+  {label:'配合服務商', render:r=>r.partner},
+  {label:'備註', render:r=>`<span class="note-cell">${r.note}</span>`},
+];
+
+/* ================= Build boards ================= */
+const boards = {};
+boards['influencer'] = ServiceBoard('influencer', {
+  rows: infRows, projects: infProjects, columns: infColumns, detailColumns: infDetailColumns,
+  kpiBoxed: true, simpleCurrency: true,
+  kpiCards: [
+    {type:'monthRev', label:'本月業績', clickable:'rev'},
+    {type:'ongoingRev', label:'合作中業績'},
+    {type:'activeCount', label:'進行中'},
+    {type:'projCount', label:'專案數', clickable:'proj'},
+    {type:'newCount', label:'本月增加名單數'},
+  ],
+  revLabels: ['02月','03月','04月','05月','06月','07月'],
+  revData: { 業績:[210000,165000,198000,220000,175000,186000], 成本:[140000,110000,135000,150000,120000,128000], 利潤:[70000,55000,63000,70000,55000,58000] },
+  newCountLabel: '網紅新增數量（每月）', newCountData: [4,6,3,8,5,7],
+  pmStats: [{pm:"Melody",count:8},{pm:"Esther",count:6},{pm:"Darren",count:4},{pm:"Jason",count:5},{pm:"Vernon",count:3},{pm:"Johnny",count:3}],
+});
+boards['buyershow'] = ServiceBoard('buyershow', {
+  rows: bsRows, projects: bsProjects, columns: bsColumns, detailColumns: bsDetailColumns,
+  kpiBoxed: true, simpleCurrency: true,
+  kpiCards: [
+    {type:'monthRev', label:'本月業績', clickable:'rev'},
+    {type:'projCount', label:'進行中專案數', clickable:'proj'},
+    {type:'activeCount', label:'進行中影片數'},
+  ],
+  revLabels: ['02月','03月','04月','05月','06月','07月'],
+  revData: { 業績:[65000,58000,72000,80000,61000,55000], 成本:[38000,32000,44000,50000,36000,31000], 利潤:[27000,26000,28000,30000,25000,24000] },
+  newCountLabel: '拍攝新增數量（每月）', newCountData: [3,4,2,6,4,5],
+  pmStats: [{pm:"Jason",count:4},{pm:"Johnny",count:7},{pm:"Esther",count:6},{pm:"Vernon",count:2}],
+});
+
+/* ================= Overview aggregation ================= */
+function renderOverview(){
+  const infRev = boards.influencer.monthRev(), bsRev = boards.buyershow.monthRev();
+  const totalProj = infProjects.length + bsProjects.length;
+  const totalVideo = boards.influencer.videoCount() + boards.buyershow.videoCount();
+  document.getElementById('overviewBignums').innerHTML = `
+    <div class="bignum"><div class="num mono">$${(infRev+bsRev).toLocaleString()}</div><div class="label">本月業績合計</div></div>
+    <div class="bignum"><div class="num">${totalProj}</div><div class="label">進行中專案數合計</div></div>
+    <div class="bignum"><div class="num">${totalVideo}</div><div class="label">進行中影片數合計</div></div>
+  `;
+  document.getElementById('ovInfProj').textContent = infProjects.length;
+  document.getElementById('ovInfVideo').textContent = boards.influencer.videoCount();
+  document.getElementById('ovInfRev').textContent = fmt(infRev);
+  document.getElementById('ovBSProj').textContent = bsProjects.length;
+  document.getElementById('ovBSVideo').textContent = boards.buyershow.videoCount();
+  document.getElementById('ovBSRev').textContent = fmt(bsRev);
+}
+renderOverview();
+</script>
+</body>
+</html>
