@@ -160,7 +160,9 @@ tbody tr:hover{background:#FCFAF3;}
       <button data-tab="influencer">跨境網紅</button>
       <button data-tab="buyershow">買家秀</button>
     </div>
-    <div class="meta">最後更新 <span class="mono" id="lastUpdated">讀取中...</span></div>
+    <div class="meta">最後更新 <span class="mono" id="lastUpdated">讀取中...</span>
+      <button id="refreshBtn" style="margin-left:10px;font-size:11.5px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-weight:500;">↻ 強制更新</button>
+    </div>
   </div>
 
   <div class="loading-state" id="loadingState">正在讀取 Google Sheet 資料...</div>
@@ -642,9 +644,16 @@ function renderOverview(infRows, infProjects, bsRows, bsProjects){
 }
 
 /* ================= Load & boot ================= */
-async function boot(){
+async function boot(force){
+  const btn = document.getElementById('refreshBtn');
+  if(force){
+    btn.disabled = true;
+    btn.textContent = '更新中...';
+    document.getElementById('errorState').innerHTML = '';
+  }
   try{
-    const res = await fetch(APPSCRIPT_URL);
+    const url = force ? `${APPSCRIPT_URL}?force=1&t=${Date.now()}` : APPSCRIPT_URL;
+    const res = await fetch(url, { cache: 'no-store' });
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
 
@@ -697,8 +706,11 @@ async function boot(){
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('errorState').innerHTML =
       `<div class="error-state">讀取 Google Sheet 資料失敗：${err.message}。請確認 Apps Script 已部署為「所有人」可存取，或稍後重新整理頁面再試一次。</div>`;
+  } finally {
+    if(force){ btn.disabled = false; btn.textContent = '↻ 強制更新'; }
   }
 }
+document.getElementById('refreshBtn').onclick = ()=> boot(true);
 boot();
 </script>
 </body>
