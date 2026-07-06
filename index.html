@@ -3,70 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WiSer 網紅社群組 Dashboard</title>
+<title>ViewEC 網紅社群組 Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#F7F3E7; --card:#FFFFFF; --ink:#17181C; --ink-soft:#726F63; --muted:#A8A395;
-  --accent:#F5C242; --accent-ink:#4A3703; --accent-soft:#FBEAC0;
-  --line:#ECE6D6; --red:#C0453C; --red-soft:#F7DEDB; --green:#2F7D5B; --green-soft:#DFEFE6;
-  --blue:#2A5C99; --blue-soft:#DCE7F3;
+  --ink:#2B2B2B; --ink-soft:#6B6B6B; --muted:#9A9A9A;
+  --bg:#F7F7F7; --card:#FFFFFF;
+  --blue:#61A6E1; --blue-soft:#EAF2FA; --blue-text:#3D7FB8;
+  --gray:#D9D9D9; --gray-mid:#E4E4E4; --gray-text:#7A7A7A;
+  --rose:#C9A9A4; --rose-soft:#F1E9E7; --rose-text:#8A6B63;
+  --line:#E5E5E5;
 }
 *{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
-.mono{font-family:'IBM Plex Mono',monospace;}
-.wrap{max-width:1280px;margin:0 auto;padding:28px 24px 90px;}
+.mono{font-family:'Inter',sans-serif;}
+.shell{display:flex;min-height:100vh;padding:20px;gap:20px;max-width:1400px;margin:0 auto;}
 
-/* Top bar */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap;}
-.topnav{background:var(--ink);border-radius:999px;padding:5px;display:flex;gap:2px;}
-.topnav button{border:none;background:transparent;color:#B9B6A9;font-family:'Inter';font-size:13px;font-weight:500;padding:9px 20px;border-radius:999px;cursor:pointer;}
-.topnav button.active{background:#FFFFFF;color:var(--ink);font-weight:600;}
-.meta{font-size:11.5px;color:var(--ink-soft);}
+/* Sidebar */
+.sidebar{width:150px;background:var(--ink);border-radius:24px;padding:22px 14px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.sidebar .logo{color:#fff;font-weight:800;font-size:15px;margin:0 8px 26px;letter-spacing:.01em;}
+#topnav{display:flex;flex-direction:column;gap:4px;}
+#topnav button{border:none;background:transparent;color:#ACA9A9;font-family:'Inter';font-size:13px;font-weight:600;padding:11px 14px;border-radius:12px;cursor:pointer;text-align:left;width:100%;}
+#topnav button.active{background:#fff;color:var(--ink);}
+#topnav button:hover:not(.active){background:#3D3D3D;color:#fff;}
+
+/* Main */
+.main{flex:1;min-width:0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
+.topbar .greet{font-size:17px;font-weight:700;}
+.meta{font-size:11.5px;color:var(--ink-soft);display:flex;align-items:center;gap:10px;}
+#refreshBtn{font-size:11.5px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-weight:600;}
+#refreshBtn:hover{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-text);}
+#refreshBtn:disabled{opacity:.6;cursor:default;}
 
 /* Tabs */
 .tabpanel{display:none;}
 .tabpanel.active{display:block;}
 
 /* Overview hero */
-.hero h1{font-family:'Fraunces',serif;font-size:28px;font-weight:600;margin:0 0 28px;}
-.bignum-row{display:flex;gap:24px;margin-bottom:36px;flex-wrap:wrap;}
-.bignum{
-  width:210px;box-sizing:border-box;padding:20px 24px;border-radius:20px;text-align:center;
-  background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border:1.5px solid rgba(255,255,255,.55);box-shadow:0 10px 24px rgba(23,24,28,.08);
-}
-.bignum .num{font-family:'Inter';font-weight:700;font-size:32px;line-height:1;white-space:nowrap;}
+.hero h1{font-size:19px;font-weight:700;margin:0 0 24px;}
+.bignum-row{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;}
+.bignum{width:200px;box-sizing:border-box;padding:22px 24px;border-radius:20px;text-align:left;background:var(--card);border:1px solid var(--line);}
+.bignum:first-child{background:var(--ink);border-color:var(--ink);}
+.bignum:first-child .num{color:#fff;}
+.bignum:first-child .label{color:rgba(255,255,255,.68);}
+.bignum .num{font-weight:800;font-size:28px;line-height:1;white-space:nowrap;}
 .bignum .label{font-size:12px;color:var(--ink-soft);margin-top:8px;white-space:nowrap;}
+
 .service-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.service-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;cursor:pointer;transition:box-shadow .15s,transform .15s;}
-.service-card:hover{box-shadow:0 8px 24px rgba(23,24,28,.08);transform:translateY(-2px);}
-.service-card .tag{display:inline-block;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;margin-bottom:14px;}
-.service-card h3{font-family:'Fraunces',serif;font-size:19px;margin:0 0 14px;font-weight:600;}
+.service-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;cursor:pointer;transition:box-shadow .15s,transform .15s;}
+.service-card:hover{box-shadow:0 8px 20px rgba(43,43,43,.06);transform:translateY(-2px);}
+.service-card .tag{display:inline-block;font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;margin-bottom:14px;}
+.service-card h3{font-size:16px;margin:0 0 14px;font-weight:700;}
 .service-card .srow{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line);}
 .service-card .srow:last-of-type{border-bottom:none;}
 .service-card .srow .k{color:var(--ink-soft);}
-.service-card .srow .v{font-family:'IBM Plex Mono';font-weight:500;}
-.service-card .cta{margin-top:14px;font-size:12px;color:var(--accent-ink);font-weight:600;}
+.service-card .srow .v{font-weight:600;}
+.service-card .cta{margin-top:14px;font-size:12px;color:var(--blue-text);font-weight:700;}
 
 .section-label{font-size:11.5px;letter-spacing:.05em;color:var(--ink-soft);text-transform:uppercase;margin:0 0 12px;font-weight:600;}
 
 /* KPI cards */
-.kpi-row{display:flex;gap:24px;margin-bottom:28px;flex-wrap:wrap;}
-.kpi{width:210px;}
-.kpi{cursor:default;}
+.kpi-row{display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap;}
+.kpi{width:200px;cursor:default;}
 .kpi.clickable{cursor:pointer;}
-.kpi .num{font-family:'Inter';font-weight:700;font-size:32px;line-height:1;white-space:nowrap;}
+.kpi .num{font-weight:800;font-size:28px;line-height:1;white-space:nowrap;}
 .kpi .label{font-size:11.5px;color:var(--ink-soft);margin-top:7px;white-space:nowrap;}
-.kpi.clickable .label{color:var(--accent-ink);}
+.kpi.clickable .label{color:var(--blue-text);}
 .kpi.clickable:hover .num{opacity:.75;}
-.kpi.boxed{
-  box-sizing:border-box;padding:18px 22px;border-radius:20px;text-align:center;
-  background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border:1.5px solid rgba(255,255,255,.55);box-shadow:0 10px 24px rgba(23,24,28,.08);
-}
+.kpi.boxed{box-sizing:border-box;padding:18px 22px;border-radius:18px;text-align:left;background:var(--card);border:1px solid var(--line);}
+.kpi-row .kpi:first-child.boxed{background:var(--ink);border-color:var(--ink);}
+.kpi-row .kpi:first-child .num{color:#fff;}
+.kpi-row .kpi:first-child .label{color:rgba(255,255,255,.68);}
 
 /* Filter pills */
 .filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
@@ -77,20 +87,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 
 /* Table */
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--ink-soft);padding:12px 14px;border-bottom:1px solid var(--line);background:#FBF9F2;font-weight:600;white-space:nowrap;}
+thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--ink-soft);padding:12px 14px;border-bottom:1px solid var(--line);background:#FAFAFA;font-weight:600;white-space:nowrap;}
 tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
-tbody tr:hover{background:#FCFAF3;}
+tbody tr:hover{background:#FAFAFA;}
 .status-tag{font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;white-space:nowrap;}
-.status-tag.合作中{background:var(--ink);color:#fff;}
-.status-tag.提案中{background:var(--blue-soft);color:var(--blue);}
-.status-tag.已結案{background:#EFEBDC;color:var(--ink-soft);}
-.status-tag.不合作{background:var(--red-soft);color:var(--red);}
-.status-tag.停滯中{background:var(--accent-soft);color:var(--accent-ink);}
+.status-tag.合作中{background:var(--blue-soft);color:var(--blue-text);}
+.status-tag.提案中{background:var(--gray-mid);color:var(--gray-text);}
+.status-tag.已結案{background:#EFEFEF;color:var(--muted);}
+.status-tag.不合作{background:var(--rose-soft);color:var(--rose-text);}
+.status-tag.停滯中{background:#F0F0F0;color:var(--ink-soft);}
 .name-cell .name{font-weight:600;}
 .name-cell .proj{font-size:11px;color:var(--ink-soft);}
-.profit.pos{color:var(--green);font-weight:600;}
-.detail-link{font-size:11.5px;color:var(--blue);text-decoration:underline;cursor:pointer;}
+.profit.pos{color:var(--blue-text);font-weight:600;}
+.detail-link{font-size:11.5px;color:var(--blue-text);text-decoration:underline;cursor:pointer;}
 .note-cell{color:var(--ink-soft);font-size:12px;}
 
 /* Sub-views */
@@ -104,32 +114,32 @@ tbody tr:hover{background:#FCFAF3;}
 .pm-dropdown{position:relative;}
 .pm-dropdown-btn{font-size:12.5px;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:500;}
 .pm-dropdown-btn::after{content:'▾';font-size:10px;color:var(--ink-soft);}
-.pm-dropdown-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:160px;box-shadow:0 10px 28px rgba(23,24,28,.14);z-index:10;}
+.pm-dropdown-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:160px;box-shadow:0 10px 28px rgba(43,43,43,.12);z-index:10;}
 .pm-dropdown-panel.open{display:block;}
 .pm-option{display:flex;align-items:center;gap:8px;padding:7px 8px;font-size:12.5px;border-radius:8px;cursor:pointer;}
-.pm-option:hover{background:#FBF9F2;}
+.pm-option:hover{background:#FAFAFA;}
 .pm-option input{margin:0;}
 .pm-dropdown-foot{display:flex;gap:8px;padding:7px 8px 2px;border-top:1px solid var(--line);margin-top:4px;}
-.pm-dropdown-foot span{font-size:11px;color:var(--blue);cursor:pointer;}
+.pm-dropdown-foot span{font-size:11px;color:var(--blue-text);cursor:pointer;}
 
 .proj-card-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;margin-bottom:24px;}
-.proj-card{flex:0 0 195px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--muted);border-radius:16px;padding:16px 18px;cursor:pointer;transition:box-shadow .15s;}
-.proj-card:hover{box-shadow:0 6px 18px rgba(23,24,28,.08);}
+.proj-card{flex:0 0 195px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:14px;padding:16px 18px;cursor:pointer;transition:box-shadow .15s;}
+.proj-card:hover{box-shadow:0 6px 16px rgba(43,43,43,.06);}
 .proj-card.selected{box-shadow:0 0 0 1.5px var(--ink);}
-.proj-card h4{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 9px;font-weight:600;}
+.proj-card h4{font-size:15px;margin:0 0 9px;font-weight:700;}
 .proj-card .prow{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;}
 .proj-card .prow .k{color:var(--ink-soft);}
 .proj-card .prow.rev{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);}
-.proj-card .prow.rev .v{font-family:'IBM Plex Mono';font-weight:600;color:var(--green);}
-.stripe-合作中{border-left-color:var(--ink);}
-.stripe-提案中{border-left-color:var(--blue);}
-.stripe-停滯中{border-left-color:var(--accent);}
-.stripe-已結案{border-left-color:var(--muted);}
+.proj-card .prow.rev .v{font-weight:700;color:var(--blue-text);}
+.stripe-合作中{border-left-color:var(--blue);}
+.stripe-提案中{border-left-color:var(--muted);}
+.stripe-停滯中{border-left-color:var(--rose);}
+.stripe-已結案{border-left-color:var(--gray);}
 
 .detail-panel{display:none;border-top:2px solid var(--ink);padding-top:22px;margin-top:4px;}
 .detail-panel.open{display:block;}
-.detail-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin:0 0 16px;}
-.info-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:26px;}
+.detail-title{font-size:18px;font-weight:700;margin:0 0 16px;}
+.info-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-bottom:26px;}
 .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
 .info-field .k{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
 .info-field .v{font-size:13.5px;margin-top:3px;}
@@ -137,7 +147,7 @@ tbody tr:hover{background:#FCFAF3;}
 /* Revenue drilldown */
 .rev-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 .chart-box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;}
-.chart-box h3{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 12px;font-weight:600;}
+.chart-box h3{font-size:15px;margin:0 0 12px;font-weight:700;}
 .chart-box.full{grid-column:1 / -1;}
 .chart-filter{display:flex;gap:6px;margin-bottom:14px;}
 .mini-toggle{font-size:11px;padding:5px 13px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink-soft);cursor:pointer;font-weight:500;}
@@ -146,63 +156,69 @@ tbody tr:hover{background:#FCFAF3;}
 .pm-table th{text-align:left;font-size:11px;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600;}
 .pm-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;}
 .pm-table tr:last-child td{border-bottom:none;}
-.bar-mini{height:6px;border-radius:3px;background:var(--accent);margin-top:4px;}
+.bar-mini{height:6px;border-radius:3px;background:var(--blue);margin-top:4px;}
 .loading-state{padding:60px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
-.error-state{padding:20px 24px;background:var(--red-soft);color:var(--red);border-radius:14px;font-size:13px;margin-bottom:20px;}
+.error-state{padding:20px 24px;background:var(--rose-soft);color:var(--rose-text);border-radius:14px;font-size:13px;margin-bottom:20px;}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="shell">
 
-  <div class="topbar">
-    <div class="topnav" id="topnav">
+  <div class="sidebar">
+    <div class="logo">ViewEC</div>
+    <div id="topnav">
       <button class="active" data-tab="overview">總覽</button>
       <button data-tab="influencer">跨境網紅</button>
       <button data-tab="buyershow">買家秀</button>
     </div>
-    <div class="meta">最後更新 <span class="mono" id="lastUpdated">讀取中...</span>
-      <button id="refreshBtn" style="margin-left:10px;font-size:11.5px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-weight:500;">↻ 強制更新</button>
-    </div>
   </div>
 
-  <div class="loading-state" id="loadingState">正在讀取 Google Sheet 資料...</div>
-  <div id="errorState"></div>
-
-  <div id="mainContent" style="display:none">
-  <!-- OVERVIEW -->
-  <div class="tabpanel active" id="tab-overview">
-    <div class="hero">
-      <h1>Welcome back，網紅社群組</h1>
-      <div class="bignum-row" id="overviewBignums"></div>
-    </div>
-    <div class="section-label">服務線</div>
-    <div class="service-grid">
-      <div class="service-card" onclick="switchTab('influencer')">
-        <div class="tag">跨境網紅</div>
-        <h3>Cross-border Influencer</h3>
-        <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovInfProj"></span></div>
-        <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovInfVideo"></span></div>
-        <div class="srow"><span class="k">本月業績</span><span class="v" id="ovInfRev"></span></div>
-        <div class="cta">查看細節 →</div>
-      </div>
-      <div class="service-card" onclick="switchTab('buyershow')">
-        <div class="tag">買家秀</div>
-        <h3>Buyer Show</h3>
-        <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovBSProj"></span></div>
-        <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovBSVideo"></span></div>
-        <div class="srow"><span class="k">本月業績</span><span class="v" id="ovBSRev"></span></div>
-        <div class="cta">查看細節 →</div>
+  <div class="main">
+    <div class="topbar">
+      <div class="greet">網紅社群組 Dashboard</div>
+      <div class="meta">最後更新 <span class="mono" id="lastUpdated">讀取中...</span>
+        <button id="refreshBtn">↻ 強制更新</button>
       </div>
     </div>
+
+    <div class="loading-state" id="loadingState">正在讀取 Google Sheet 資料...</div>
+    <div id="errorState"></div>
+
+    <div id="mainContent" style="display:none">
+    <!-- OVERVIEW -->
+    <div class="tabpanel active" id="tab-overview">
+      <div class="hero">
+        <h1>總覽</h1>
+        <div class="bignum-row" id="overviewBignums"></div>
+      </div>
+      <div class="section-label">服務線</div>
+      <div class="service-grid">
+        <div class="service-card" onclick="switchTab('influencer')">
+          <div class="tag" style="background:var(--blue-soft);color:var(--blue-text)">跨境網紅</div>
+          <h3>Cross-border Influencer</h3>
+          <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovInfProj"></span></div>
+          <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovInfVideo"></span></div>
+          <div class="srow"><span class="k">本月業績</span><span class="v" id="ovInfRev"></span></div>
+          <div class="cta">查看細節 →</div>
+        </div>
+        <div class="service-card" onclick="switchTab('buyershow')">
+          <div class="tag" style="background:var(--gray-mid);color:var(--gray-text)">買家秀</div>
+          <h3>Buyer Show</h3>
+          <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovBSProj"></span></div>
+          <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovBSVideo"></span></div>
+          <div class="srow"><span class="k">本月業績</span><span class="v" id="ovBSRev"></span></div>
+          <div class="cta">查看細節 →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFLUENCER TAB -->
+    <div class="tabpanel" id="tab-influencer"></div>
+
+    <!-- BUYER SHOW TAB -->
+    <div class="tabpanel" id="tab-buyershow"></div>
+    </div>
   </div>
-
-  <!-- INFLUENCER TAB -->
-  <div class="tabpanel" id="tab-influencer"></div>
-
-  <!-- BUYER SHOW TAB -->
-  <div class="tabpanel" id="tab-buyershow"></div>
-  </div>
-
 </div>
 
 <script>
@@ -523,7 +539,7 @@ function ServiceBoard(ns, cfg){
 
   let revChart;
   function buildRevChart(keys){
-    const colors = {業績:'#17181C', 成本:'#F5C242', 利潤:'#2A5C99'};
+    const colors = {業績:'#2B2B2B', 成本:'#D9D9D9', 利潤:'#61A6E1'};
     const datasets = keys.map(k => k==='利潤'
       ? {type:'line', label:'利潤', data:revData.利潤, borderColor:colors.利潤, backgroundColor:colors.利潤, tension:.3}
       : {type:'bar', label:k, data:revData[k], backgroundColor:colors[k], borderRadius:5, maxBarThickness:28});
@@ -531,8 +547,8 @@ function ServiceBoard(ns, cfg){
     revChart = new Chart(document.getElementById(`${ns}-revChart`), {
       data:{ labels:revLabels, datasets },
       options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
-        scales:{ y:{grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
-          x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
+        scales:{ y:{grid:{color:'#E5E5E5'}, ticks:{font:{family:'Inter',size:10}}},
+          x:{grid:{display:false}, ticks:{font:{family:'Inter',size:10}}} } }
     });
   }
   buildRevChart(['業績','成本','利潤']);
@@ -551,8 +567,8 @@ function ServiceBoard(ns, cfg){
     type:'bar',
     data:{ labels:revLabels, datasets:[{data:newCountData, backgroundColor:'#F5C242', borderRadius:5, maxBarThickness:26}] },
     options:{ plugins:{legend:{display:false}}, scales:{
-      y:{beginAtZero:true, grid:{color:'#ECE6D6'}, ticks:{font:{family:'IBM Plex Mono',size:10}}},
-      x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}}} } }
+      y:{beginAtZero:true, grid:{color:'#E5E5E5'}, ticks:{font:{family:'Inter',size:10}}},
+      x:{grid:{display:false}, ticks:{font:{family:'Inter',size:10}}} } }
   });
 
   const pmCounts = {};
