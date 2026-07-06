@@ -92,14 +92,14 @@ tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:12.5px;
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#FAFAFA;}
 .status-tag{font-size:11px;padding:4px 12px;border-radius:999px;font-weight:600;white-space:nowrap;}
-.status-tag.合作中{background:var(--blue-soft);color:var(--blue-text);}
-.status-tag.提案中{background:var(--gray-mid);color:var(--gray-text);}
-.status-tag.已結案{background:#EFEFEF;color:var(--muted);}
-.status-tag.不合作{background:var(--rose-soft);color:var(--rose-text);}
-.status-tag.停滯中{background:#F0F0F0;color:var(--ink-soft);}
+.status-tag.合作中{background:rgba(0,132,113,.14);color:#008471;}
+.status-tag.提案中{background:rgba(128,176,232,.20);color:#3E6FA8;}
+.status-tag.已結案{background:rgba(209,202,234,.40);color:#6B5C99;}
+.status-tag.不合作{background:rgba(196,95,63,.15);color:#C45F3F;}
+.status-tag.停滯中{background:rgba(244,210,66,.25);color:#8A6B00;}
 .name-cell .name{font-weight:600;}
 .name-cell .proj{font-size:11px;color:var(--ink-soft);}
-.profit.pos{color:var(--blue-text);font-weight:600;}
+.profit.pos{color:#008471;font-weight:600;}
 .detail-link{font-size:11.5px;color:var(--blue-text);text-decoration:underline;cursor:pointer;}
 .note-cell{color:var(--ink-soft);font-size:12px;}
 
@@ -130,11 +130,12 @@ tbody tr:hover{background:#FAFAFA;}
 .proj-card .prow{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;}
 .proj-card .prow .k{color:var(--ink-soft);}
 .proj-card .prow.rev{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);}
-.proj-card .prow.rev .v{font-weight:700;color:var(--blue-text);}
-.stripe-合作中{border-left-color:var(--blue);}
-.stripe-提案中{border-left-color:var(--muted);}
-.stripe-停滯中{border-left-color:var(--rose);}
-.stripe-已結案{border-left-color:var(--gray);}
+.proj-card .prow.rev .v{font-weight:700;color:#008471;}
+.stripe-合作中{border-left-color:#008471;}
+.stripe-提案中{border-left-color:#80B0E8;}
+.stripe-停滯中{border-left-color:#F4D242;}
+.stripe-已結案{border-left-color:#D1CAEA;}
+.stripe-不合作{border-left-color:#C45F3F;}
 
 .detail-panel{display:none;border-top:2px solid var(--ink);padding-top:22px;margin-top:4px;}
 .detail-panel.open{display:block;}
@@ -159,6 +160,19 @@ tbody tr:hover{background:#FAFAFA;}
 .bar-mini{height:6px;border-radius:3px;background:var(--blue);margin-top:4px;}
 .loading-state{padding:60px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
 .error-state{padding:20px 24px;background:var(--rose-soft);color:var(--rose-text);border-radius:14px;font-size:13px;margin-bottom:20px;}
+
+/* Overview donut */
+.overview-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;}
+.right-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;}
+.right-card h3{font-size:14px;margin:0 0 2px;font-weight:700;}
+.donut-wrap{position:relative;display:flex;justify-content:center;margin:16px 0;}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.donut-center .t{font-size:11px;color:var(--ink-soft);}
+.donut-center .v{font-weight:800;font-size:19px;}
+.legend{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.legend-item{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;}
+.legend-item .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:8px;}
+.legend-item .v{font-weight:600;}
 </style>
 </head>
 <body>
@@ -191,23 +205,38 @@ tbody tr:hover{background:#FAFAFA;}
         <h1>總覽</h1>
         <div class="bignum-row" id="overviewBignums"></div>
       </div>
-      <div class="section-label">服務線</div>
-      <div class="service-grid">
-        <div class="service-card" onclick="switchTab('influencer')">
-          <div class="tag" style="background:var(--blue-soft);color:var(--blue-text)">跨境網紅</div>
-          <h3>Cross-border Influencer</h3>
-          <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovInfProj"></span></div>
-          <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovInfVideo"></span></div>
-          <div class="srow"><span class="k">本月業績</span><span class="v" id="ovInfRev"></span></div>
-          <div class="cta">查看細節 →</div>
+      <div class="overview-grid">
+        <div>
+          <div class="section-label">服務線</div>
+          <div class="service-grid">
+            <div class="service-card" onclick="switchTab('influencer')">
+              <div class="tag" style="background:rgba(128,176,232,.20);color:#3E6FA8">跨境網紅</div>
+              <h3>Cross-border Influencer</h3>
+              <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovInfProj"></span></div>
+              <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovInfVideo"></span></div>
+              <div class="srow"><span class="k">本月業績</span><span class="v" id="ovInfRev"></span></div>
+              <div class="cta">查看細節 →</div>
+            </div>
+            <div class="service-card" onclick="switchTab('buyershow')">
+              <div class="tag" style="background:rgba(242,156,195,.22);color:#B85A87">買家秀</div>
+              <h3>Buyer Show</h3>
+              <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovBSProj"></span></div>
+              <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovBSVideo"></span></div>
+              <div class="srow"><span class="k">本月業績</span><span class="v" id="ovBSRev"></span></div>
+              <div class="cta">查看細節 →</div>
+            </div>
+          </div>
         </div>
-        <div class="service-card" onclick="switchTab('buyershow')">
-          <div class="tag" style="background:var(--gray-mid);color:var(--gray-text)">買家秀</div>
-          <h3>Buyer Show</h3>
-          <div class="srow"><span class="k">進行中專案數</span><span class="v" id="ovBSProj"></span></div>
-          <div class="srow"><span class="k">進行中影片數</span><span class="v" id="ovBSVideo"></span></div>
-          <div class="srow"><span class="k">本月業績</span><span class="v" id="ovBSRev"></span></div>
-          <div class="cta">查看細節 →</div>
+        <div class="right-card">
+          <h3>本月業績佔比</h3>
+          <div class="donut-wrap">
+            <canvas id="overviewDonut" width="170" height="170"></canvas>
+            <div class="donut-center"><div class="t">合計</div><div class="v" id="donutTotal">—</div></div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><span><span class="dot" style="background:#80B0E8"></span>跨境網紅</span><span class="v" id="donutInfVal">—</span></div>
+            <div class="legend-item"><span><span class="dot" style="background:#F29CC3"></span>買家秀</span><span class="v" id="donutBSVal">—</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -657,6 +686,17 @@ function renderOverview(infRows, infProjects, bsRows, bsProjects){
   document.getElementById('ovBSProj').textContent = bsProjects.length;
   document.getElementById('ovBSVideo').textContent = activeCountOf(bsRows);
   document.getElementById('ovBSRev').textContent = fmtD(bsRev);
+
+  document.getElementById('donutTotal').textContent = fmtD(infRev+bsRev);
+  document.getElementById('donutInfVal').textContent = fmtD(infRev);
+  document.getElementById('donutBSVal').textContent = fmtD(bsRev);
+  if(window.overviewDonutChart) window.overviewDonutChart.destroy();
+  const donutData = (infRev+bsRev)>0 ? [infRev,bsRev] : [1,1];
+  window.overviewDonutChart = new Chart(document.getElementById('overviewDonut'), {
+    type:'doughnut',
+    data:{ labels:['跨境網紅','買家秀'], datasets:[{ data:donutData, backgroundColor:['#80B0E8','#F29CC3'], borderWidth:0, cutout:'72%' }] },
+    options:{ plugins:{legend:{display:false}} }
+  });
 }
 
 /* ================= Load & boot ================= */
